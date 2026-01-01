@@ -1,0 +1,49 @@
+[package]
+name = "atlas-external-chains"
+version = "0.1.0"
+edition = "2021"
+authors = ["Atlas Sphere Team"]
+description = "External EVM chain adapters for Atlas Sphere cross-chain operations"
+license = "MIT"
+repository = "https://github.com/Cyptopimpinainteazy/atlas-sphere"
+
+[dependencies]
+# Core Substrate dependencies (using workspace versions)
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+sp-core = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+
+# Internal crates
+atlas-evm-integration = { path = "../evm-integration", default-features = false }
+atlas-cross-vm-bridge = { path = "../cross-vm-bridge", default-features = false }
+
+# Async runtime
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+hex-literal = "0.4"
+
+# Logging
+log = { workspace = true, default-features = false }
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full", "test-util", "macros", "rt-multi-thread"] }
+
+[features]
+default = ["std"]
+std = [
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "sp-core/std",
+    "sp-std/std",
+    "sp-runtime/std",
+    "sp-io/std",
+    "atlas-evm-integration/std",
+    "atlas-cross-vm-bridge/std",
+    "serde/std",
+    "log/std",
+]

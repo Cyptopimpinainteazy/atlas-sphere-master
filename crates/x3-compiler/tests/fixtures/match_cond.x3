@@ -1,0 +1,27 @@
+// E2E Test: Match conditions and pattern matching
+// Tests: multiple conditionals, complex control flow
+
+fn classify(x: i64) -> i64 {
+    if x < 0 {
+        return -1;
+    }
+    if x == 0 {
+        return 0;
+    }
+    if x < 10 {
+        return 1;
+    }
+    if x < 100 {
+        return 2;
+    }
+    return 3;
+}
+
+fn main() -> i64 {
+    let a = classify(-5);
+    let b = classify(0);
+    let c = classify(5);
+    let d = classify(50);
+    let e = classify(500);
+    return a + b + c + d + e;
+}

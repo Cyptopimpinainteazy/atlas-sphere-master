@@ -1,0 +1,12 @@
+agent Arbiter {
+    fn eval(ctx) {
+        atomic {
+            let a = ctx.price_a;
+            let b = ctx.price_b;
+
+            if (a < b) {
+                emit b - a;
+            }
+        }
+    }
+}

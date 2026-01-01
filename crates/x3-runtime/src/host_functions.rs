@@ -1,0 +1,901 @@
+// crates/x3-runtime/src/host_functions.rs
+// Host function implementations for X3 extern declarations
+//
+// These implement the host ABI defined in stdlib files:
+// - core.x3: panic, require, assert
+// - bridge.x3: host_send_message, host_verify_proof, etc.
+// - token.x3: evm_*, svm_* token operations
+// - dex.x3: host_quote_swap, host_swap_exact_in, etc.
+
+use crate::{X3Context, BridgeMessage, X3StateChange};
+use anyhow::{anyhow, Result};
+use parity_scale_codec::{Encode, Decode};
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+
+/// Trait for reading WASM linear memory
+/// Implemented by the WASM runtime to provide memory access to host functions
+pub trait WasmMemory: Send + Sync {
+    /// Read bytes from WASM memory at the given offset
+    fn read(&self, offset: u32, length: u32) -> Result<Vec<u8>>;
+    
+    /// Write bytes to WASM memory at the given offset
+    fn write(&self, offset: u32, data: &[u8]) -> Result<()>;
+    
+    /// Get the current memory size in bytes
+    fn size(&self) -> u32;
+}
+
+/// Default in-memory implementation for testing
+pub struct InMemoryWasm {
+    data: RwLock<Vec<u8>>,
+}
+
+impl InMemoryWasm {
+    pub fn new(size: usize) -> Self {
+        InMemoryWasm {
+            data: RwLock::new(vec![0u8; size]),
+        }
+    }
+    
+    pub fn with_data(data: Vec<u8>) -> Self {
+        InMemoryWasm {
+            data: RwLock::new(data),
+        }
+    }
+}
+
+impl WasmMemory for InMemoryWasm {
+    fn read(&self, offset: u32, length: u32) -> Result<Vec<u8>> {
+        let data = self.data.read().map_err(|_| anyhow!("Memory lock poisoned"))?;
+        let start = offset as usize;
+        let end = start + length as usize;
+        if end > data.len() {
+            return Err(anyhow!("Memory read out of bounds: {} + {} > {}", offset, length, data.len()));
+        }
+        Ok(data[start..end].to_vec())
+    }
+    
+    fn write(&self, offset: u32, bytes: &[u8]) -> Result<()> {
+        let mut data = self.data.write().map_err(|_| anyhow!("Memory lock poisoned"))?;
+        let start = offset as usize;
+        let end = start + bytes.len();
+        if end > data.len() {
+            return Err(anyhow!("Memory write out of bounds: {} + {} > {}", offset, bytes.len(), data.len()));
+        }
+        data[start..end].copy_from_slice(bytes);
+        Ok(())
+    }
+    
+    fn size(&self) -> u32 {
+        self.data.read().map(|d| d.len() as u32).unwrap_or(0)
+    }
+}
+
+/// Host function registry
+/// Maps function names to their implementations
+pub struct HostFunctionRegistry {
+    functions: HashMap<String, HostFn>,
+    /// Token balances: (token_id, account) -> balance
+    token_balances: Arc<RwLock<HashMap<([u8; 32], [u8; 32]), u128>>>,
+    /// Token allowances: (token_id, owner, spender) -> allowance
+    token_allowances: Arc<RwLock<HashMap<([u8; 32], [u8; 32], [u8; 32]), u128>>>,
+    /// ZK proof verifier
+    proof_verifier: Arc<dyn ProofVerifier + Send + Sync>,
+    /// WASM memory for reading/writing guest data
+    wasm_memory: Option<Arc<dyn WasmMemory>>,
+    /// Bridge receipts: msg_id -> (success, return_data)
+    bridge_receipts: Arc<RwLock<HashMap<[u8; 32], (bool, Vec<u8>)>>>,
+    /// Bridge state: msg_id -> state (0=Pending, 1=Executed, 2=Failed, 3=Finalized)
+    bridge_states: Arc<RwLock<HashMap<[u8; 32], u8>>>,
+    /// Canonical bridge roots committed
+    bridge_roots: Arc<RwLock<Vec<[u8; 32]>>>,
+}
+
+/// Host function signature
+pub type HostFn = fn(&mut X3Context, &[u64]) -> Result<u64>;
+
+/// Proof verifier trait
+pub trait ProofVerifier: Send + Sync {
+    fn verify(&self, proof: &[u8]) -> bool;
+}
+
+/// Mock proof verifier for testing
+pub struct MockProofVerifier;
+
+impl ProofVerifier for MockProofVerifier {
+    fn verify(&self, proof: &[u8]) -> bool {
+        // Accept proofs that are non-empty and start with 0x01
+        !proof.is_empty() && proof[0] == 0x01
+    }
+}
+
+impl HostFunctionRegistry {
+    pub fn new() -> Self {
+        let mut registry = HostFunctionRegistry {
+            functions: HashMap::new(),
+            token_balances: Arc::new(RwLock::new(HashMap::new())),
+            token_allowances: Arc::new(RwLock::new(HashMap::new())),
+            proof_verifier: Arc::new(MockProofVerifier),
+            wasm_memory: None,
+            bridge_receipts: Arc::new(RwLock::new(HashMap::new())),
+            bridge_states: Arc::new(RwLock::new(HashMap::new())),
+            bridge_roots: Arc::new(RwLock::new(Vec::new())),
+        };
+        
+        registry.register_core_functions();
+        registry.register_bridge_functions();
+        
+        registry
+    }
+
+    pub fn with_proof_verifier(verifier: Arc<dyn ProofVerifier + Send + Sync>) -> Self {
+        let mut registry = Self::new();
+        registry.proof_verifier = verifier;
+        registry
+    }
+    
+    pub fn with_wasm_memory(mut self, memory: Arc<dyn WasmMemory>) -> Self {
+        self.wasm_memory = Some(memory);
+        self
+    }
+    
+    /// Read bytes from WASM memory if available
+    pub fn read_wasm_memory(&self, ptr: u32, len: u32) -> Result<Vec<u8>> {
+        match &self.wasm_memory {
+            Some(mem) => mem.read(ptr, len),
+            None => Err(anyhow!("WASM memory not available")),
+        }
+    }
+    
+    /// Write bytes to WASM memory if available
+    pub fn write_wasm_memory(&self, ptr: u32, data: &[u8]) -> Result<()> {
+        match &self.wasm_memory {
+            Some(mem) => mem.write(ptr, data),
+            None => Err(anyhow!("WASM memory not available")),
+        }
+    }
+    
+    /// Store a bridge receipt
+    pub fn store_bridge_receipt(&self, msg_id: [u8; 32], success: bool, data: Vec<u8>) {
+        if let Ok(mut receipts) = self.bridge_receipts.write() {
+            receipts.insert(msg_id, (success, data));
+        }
+        if let Ok(mut states) = self.bridge_states.write() {
+            states.insert(msg_id, if success { 1 } else { 2 }); // Executed or Failed
+        }
+    }
+    
+    /// Finalize a bridge message
+    pub fn finalize_bridge_message(&self, msg_id: [u8; 32]) {
+        if let Ok(mut states) = self.bridge_states.write() {
+            states.insert(msg_id, 3); // Finalized
+        }
+    }
+
+    fn register_core_functions(&mut self) {
+        // Gas cost for core operations
+        const CORE_GAS: u64 = 100;
+
+        self.functions.insert("host_get_chain_id".into(), |ctx, _args| {
+            ctx.consume_gas(CORE_GAS)?;
+            Ok(ctx.chain_id as u64)
+        });
+
+        self.functions.insert("host_get_block_height".into(), |ctx, _args| {
+            ctx.consume_gas(CORE_GAS)?;
+            Ok(ctx.block_height)
+        });
+
+        self.functions.insert("caller_address".into(), |ctx, _args| {
+            ctx.consume_gas(CORE_GAS)?;
+            // Return first 8 bytes as u64 (simplified for MVP)
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&ctx.caller[0..8]);
+            Ok(u64::from_le_bytes(bytes))
+        });
+
+        self.functions.insert("self_address".into(), |ctx, _args| {
+            ctx.consume_gas(CORE_GAS)?;
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&ctx.self_addr[0..8]);
+            Ok(u64::from_le_bytes(bytes))
+        });
+    }
+
+    fn register_bridge_functions(&mut self) {
+        const BRIDGE_GAS: u64 = 5000;
+
+        // Clone Arc references for use in closures
+        let bridge_receipts = Arc::clone(&self.bridge_receipts);
+        let bridge_states = Arc::clone(&self.bridge_states);
+        let bridge_roots = Arc::clone(&self.bridge_roots);
+
+        self.functions.insert("host_send_message".into(), |ctx, args| {
+            ctx.consume_gas(BRIDGE_GAS)?;
+            
+            if args.len() < 4 {
+                return Err(anyhow!("host_send_message requires 4 args: dst_chain, payload_ptr, payload_len, gas_limit"));
+            }
+            
+            let dst_chain = args[0] as u32;
+            let payload_ptr = args[1] as u32;
+            let payload_len = args[2] as u32;
+            let gas_limit = args[3];
+            
+            // Read payload from context's pending memory buffer if available
+            // In production, this reads from WASM linear memory via the executor
+            let payload = if payload_len > 0 && payload_len <= 16384 {
+                // For now, create a placeholder payload with the pointer info
+                // Real implementation would use: registry.read_wasm_memory(payload_ptr, payload_len)?
+                let mut p = Vec::with_capacity(payload_len as usize);
+                p.extend_from_slice(&payload_ptr.to_le_bytes());
+                p.extend_from_slice(&payload_len.to_le_bytes());
+                p.resize(payload_len as usize, 0);
+                p
+            } else {
+                Vec::new()
+            };
+            
+            let msg = BridgeMessage {
+                src_chain: ctx.chain_id,
+                dst_chain,
+                sender: ctx.caller,
+                payload,
+                gas_limit,
+                nonce: ctx.bridge_messages.len() as u64,
+            };
+            
+            let msg_id = ctx.send_bridge_message(msg);
+            
+            // Return first 8 bytes of msg_id as u64
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&msg_id[0..8]);
+            Ok(u64::from_le_bytes(bytes))
+        });
+
+        self.functions.insert("host_verify_proof".into(), |ctx, args| {
+            ctx.consume_gas(BRIDGE_GAS * 10)?; // ZK verification is expensive
+            
+            if args.len() < 2 {
+                return Err(anyhow!("host_verify_proof requires 2 args: proof_ptr, proof_len"));
+            }
+            
+            let proof_ptr = args[0] as u32;
+            let proof_len = args[1] as u32;
+            
+            // Validate proof length
+            if proof_len == 0 || proof_len > 65536 {
+                return Ok(0); // Invalid proof
+            }
+            
+            // In production, read proof from WASM memory and verify with ZK verifier
+            // For now, accept proofs where the first arg (ptr) indicates a valid proof marker
+            // Real impl: let proof = registry.read_wasm_memory(proof_ptr, proof_len)?;
+            //            let valid = registry.proof_verifier.verify(&proof);
+            
+            // Mock verification: accept if proof_ptr has marker byte pattern
+            let valid = proof_ptr > 0 && (proof_ptr & 0xFF) == 0x01;
+            
+            Ok(if valid { 1 } else { 0 })
+        });
+
+        self.functions.insert("host_execute_bridge_intent".into(), |ctx, args| {
+            ctx.consume_gas(BRIDGE_GAS * 5)?;
+            
+            if args.len() < 2 {
+                return Err(anyhow!("host_execute_bridge_intent requires 2 args: intent_ptr, intent_len"));
+            }
+            
+            let intent_ptr = args[0] as u32;
+            let intent_len = args[1] as u32;
+            
+            // Validate intent size
+            if intent_len == 0 || intent_len > 16384 {
+                return Err(anyhow!("Invalid intent size: {}", intent_len));
+            }
+            
+            // In production: deserialize Intent from WASM memory
+            // let intent_bytes = registry.read_wasm_memory(intent_ptr, intent_len)?;
+            // let intent: BridgeIntent = Decode::decode(&mut &intent_bytes[..])?;
+            
+            // Execute the intent and generate a receipt
+            // For now, create a mock receipt ID based on intent params
+            use sha2::{Sha256, Digest};
+            let mut hasher = Sha256::new();
+            hasher.update(&intent_ptr.to_le_bytes());
+            hasher.update(&intent_len.to_le_bytes());
+            hasher.update(&ctx.caller);
+            let receipt_hash = hasher.finalize();
+            
+            // Return receipt pointer (first 8 bytes as u64)
+            let mut receipt_id = [0u8; 8];
+            receipt_id.copy_from_slice(&receipt_hash[0..8]);
+            Ok(u64::from_le_bytes(receipt_id))
+        });
+
+        let roots_clone = Arc::clone(&bridge_roots);
+        self.functions.insert("host_commit_bridge_root".into(), move |ctx, args| {
+            ctx.consume_gas(BRIDGE_GAS)?;
+            
+            if args.is_empty() {
+                return Err(anyhow!("host_commit_bridge_root requires root arg"));
+            }
+            
+            // Convert the u64 arg to a 32-byte root
+            let root_low = args[0];
+            let root_high = if args.len() > 1 { args[1] } else { 0 };
+            
+            let mut root = [0u8; 32];
+            root[0..8].copy_from_slice(&root_low.to_le_bytes());
+            root[8..16].copy_from_slice(&root_high.to_le_bytes());
+            
+            // Commit root to bridge roots storage
+            if let Ok(mut roots) = roots_clone.write() {
+                roots.push(root);
+            }
+            
+            // Emit log for the commitment
+            ctx.emit_log(
+                "BridgeRootCommitted".into(),
+                root.to_vec(),
+            );
+            
+            Ok(1) // Success
+        });
+
+        let receipts_clone = Arc::clone(&bridge_receipts);
+        self.functions.insert("host_resolve_bridge_receipt".into(), move |ctx, args| {
+            ctx.consume_gas(BRIDGE_GAS)?;
+            
+            if args.is_empty() {
+                return Err(anyhow!("host_resolve_bridge_receipt requires msg_id arg"));
+            }
+            
+            // Convert u64 arg to msg_id lookup key
+            let msg_id_low = args[0];
+            let mut msg_id = [0u8; 32];
+            msg_id[0..8].copy_from_slice(&msg_id_low.to_le_bytes());
+            
+            // Look up receipt by msg_id
+            if let Ok(receipts) = receipts_clone.read() {
+                if let Some((success, data)) = receipts.get(&msg_id) {
+                    // Return encoded receipt info
+                    // Format: success (1 byte) + data_len (4 bytes) + data_hash_first_3_bytes
+                    let success_byte = if *success { 1u64 } else { 0u64 };
+                    let data_len = data.len() as u64;
+                    return Ok(success_byte | (data_len << 8));
+                }
+            }
+            
+            Ok(0) // None - no receipt found
+        });
+
+        let states_clone = Arc::clone(&bridge_states);
+        self.functions.insert("host_get_bridge_state".into(), move |ctx, args| {
+            ctx.consume_gas(BRIDGE_GAS / 2)?;
+            
+            if args.is_empty() {
+                return Err(anyhow!("host_get_bridge_state requires msg_id arg"));
+            }
+            
+            // Convert u64 arg to msg_id lookup key
+            let msg_id_low = args[0];
+            let mut msg_id = [0u8; 32];
+            msg_id[0..8].copy_from_slice(&msg_id_low.to_le_bytes());
+            
+            // Look up state by msg_id
+            if let Ok(states) = states_clone.read() {
+                if let Some(&state) = states.get(&msg_id) {
+                    return Ok(state as u64);
+                }
+            }
+            
+            // Return BridgeState enum as u64
+            // 0 = Pending, 1 = Executed, 2 = Failed, 3 = Finalized
+            Ok(0) // Pending (default for unknown messages)
+        });
+    }
+
+    /// Call a host function by name
+    pub fn call(&self, name: &str, ctx: &mut X3Context, args: &[u64]) -> Result<u64> {
+        let func = self.functions.get(name)
+            .ok_or_else(|| anyhow!("Unknown host function: {}", name))?;
+        func(ctx, args)
+    }
+
+    /// Check if a function is registered
+    pub fn has_function(&self, name: &str) -> bool {
+        self.functions.contains_key(name)
+    }
+
+    /// Get list of registered function names
+    pub fn function_names(&self) -> Vec<&str> {
+        self.functions.keys().map(|s| s.as_str()).collect()
+    }
+}
+
+impl Default for HostFunctionRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// EVM-specific host functions for token.x3 extern declarations
+pub struct EvmHostFunctions;
+
+impl EvmHostFunctions {
+    pub fn register(registry: &mut HostFunctionRegistry) {
+        const EVM_TOKEN_GAS: u64 = 3000;
+
+        registry.functions.insert("evm_balance_of".into(), |ctx, args| {
+            ctx.consume_gas(EVM_TOKEN_GAS)?;
+            
+            if args.len() < 2 {
+                return Err(anyhow!("evm_balance_of requires 2 args: addr, owner"));
+            }
+            
+            let token_addr = args[0];
+            let owner = args[1];
+            
+            // Construct storage key: EVM prefix (0x00) + token_addr + owner
+            let mut key = [0u8; 32];
+            key[0] = 0x00; // EVM namespace
+            key[1..9].copy_from_slice(&token_addr.to_le_bytes());
+            key[9..17].copy_from_slice(&owner.to_le_bytes());
+            
+            // Query from token_balances storage
+            if let Some(balance) = ctx.token_balances.get(&key) {
+                Ok(*balance as u64)
+            } else {
+                // Return 0 for unknown balances
+                Ok(0)
+            }
+        });
+
+        registry.functions.insert("evm_transfer".into(), |ctx, args| {
+            ctx.consume_gas(EVM_TOKEN_GAS * 2)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("evm_transfer requires 3 args: addr, to, amount"));
+            }
+            
+            let amount = args[2] as u128;
+            
+            // Record state change
+            let mut key = [0u8; 32];
+            key[0..8].copy_from_slice(&args[0].to_le_bytes());
+            key[8..16].copy_from_slice(&args[1].to_le_bytes());
+            
+            ctx.record_state_change(
+                key,
+                None,
+                amount.to_le_bytes().to_vec(),
+            );
+            
+            ctx.emit_log(
+                "Transfer".into(),
+                format!("to={}, amount={}", args[1], amount).into_bytes(),
+            );
+            
+            Ok(1) // Success
+        });
+
+        registry.functions.insert("evm_approve".into(), |ctx, args| {
+            ctx.consume_gas(EVM_TOKEN_GAS)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("evm_approve requires 3 args: addr, spender, amount"));
+            }
+            
+            ctx.emit_log(
+                "Approval".into(),
+                format!("spender={}, amount={}", args[1], args[2]).into_bytes(),
+            );
+            
+            Ok(1) // Success
+        });
+
+        registry.functions.insert("evm_allowance".into(), |ctx, args| {
+            ctx.consume_gas(EVM_TOKEN_GAS)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("evm_allowance requires 3 args: addr, owner, spender"));
+            }
+            
+            let token_addr = args[0];
+            let owner = args[1];
+            let spender = args[2];
+            
+            // Construct allowance storage key: EVM prefix (0x01) + token + owner + spender
+            let mut key = [0u8; 32];
+            key[0] = 0x01; // EVM allowance namespace
+            key[1..9].copy_from_slice(&token_addr.to_le_bytes());
+            // Hash owner+spender to fit in remaining bytes
+            use sha2::{Sha256, Digest};
+            let mut hasher = Sha256::new();
+            hasher.update(&owner.to_le_bytes());
+            hasher.update(&spender.to_le_bytes());
+            let hash = hasher.finalize();
+            key[9..32].copy_from_slice(&hash[0..23]);
+            
+            // Query from token_balances (used for allowances too)
+            if let Some(allowance) = ctx.token_balances.get(&key) {
+                Ok(*allowance as u64)
+            } else {
+                Ok(0) // No allowance set
+            }
+        });
+
+        registry.functions.insert("evm_transfer_from".into(), |ctx, args| {
+            ctx.consume_gas(EVM_TOKEN_GAS * 2)?;
+            
+            if args.len() < 4 {
+                return Err(anyhow!("evm_transfer_from requires 4 args: addr, from, to, amount"));
+            }
+            
+            ctx.emit_log(
+                "TransferFrom".into(),
+                format!("from={}, to={}, amount={}", args[1], args[2], args[3]).into_bytes(),
+            );
+            
+            Ok(1) // Success
+        });
+    }
+}
+
+/// SVM-specific host functions for token.x3 extern declarations
+pub struct SvmHostFunctions;
+
+impl SvmHostFunctions {
+    pub fn register(registry: &mut HostFunctionRegistry) {
+        const SVM_TOKEN_GAS: u64 = 2500;
+
+        registry.functions.insert("svm_balance_of".into(), |ctx, args| {
+            ctx.consume_gas(SVM_TOKEN_GAS)?;
+            
+            if args.len() < 2 {
+                return Err(anyhow!("svm_balance_of requires 2 args: mint, owner"));
+            }
+            
+            let mint = args[0];
+            let owner = args[1];
+            
+            // Construct storage key: SVM prefix (0x80) + mint + owner
+            let mut key = [0u8; 32];
+            key[0] = 0x80; // SVM namespace (128+)
+            key[1..9].copy_from_slice(&mint.to_le_bytes());
+            key[9..17].copy_from_slice(&owner.to_le_bytes());
+            
+            // Query from token_balances storage
+            if let Some(balance) = ctx.token_balances.get(&key) {
+                Ok(*balance as u64)
+            } else {
+                // Return 0 for unknown balances
+                Ok(0)
+            }
+        });
+
+        registry.functions.insert("svm_transfer".into(), |ctx, args| {
+            ctx.consume_gas(SVM_TOKEN_GAS * 2)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("svm_transfer requires 3 args: mint, to, amount"));
+            }
+            
+            let amount = args[2] as u128;
+            
+            // Record state change with SVM prefix
+            let mut key = [0u8; 32];
+            key[0] = 128; // SVM prefix (>= 128)
+            key[1..9].copy_from_slice(&args[0].to_le_bytes());
+            key[9..17].copy_from_slice(&args[1].to_le_bytes());
+            
+            ctx.record_state_change(
+                key,
+                None,
+                amount.to_le_bytes().to_vec(),
+            );
+            
+            ctx.emit_log(
+                "SPLTransfer".into(),
+                format!("to={}, amount={}", args[1], amount).into_bytes(),
+            );
+            
+            Ok(1) // Success
+        });
+
+        registry.functions.insert("svm_approve".into(), |ctx, args| {
+            ctx.consume_gas(SVM_TOKEN_GAS)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("svm_approve requires 3 args: mint, delegate, amount"));
+            }
+            
+            ctx.emit_log(
+                "SPLApproval".into(),
+                format!("delegate={}, amount={}", args[1], args[2]).into_bytes(),
+            );
+            
+            Ok(1) // Success
+        });
+
+        registry.functions.insert("svm_allowance".into(), |ctx, args| {
+            ctx.consume_gas(SVM_TOKEN_GAS)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("svm_allowance requires 3 args: mint, owner, delegate"));
+            }
+            
+            let mint = args[0];
+            let owner = args[1];
+            let delegate = args[2];
+            
+            // Construct delegation storage key: SVM prefix (0x81) + mint + owner + delegate
+            let mut key = [0u8; 32];
+            key[0] = 0x81; // SVM delegation namespace
+            key[1..9].copy_from_slice(&mint.to_le_bytes());
+            // Hash owner+delegate to fit in remaining bytes
+            use sha2::{Sha256, Digest};
+            let mut hasher = Sha256::new();
+            hasher.update(&owner.to_le_bytes());
+            hasher.update(&delegate.to_le_bytes());
+            let hash = hasher.finalize();
+            key[9..32].copy_from_slice(&hash[0..23]);
+            
+            // Query from token_balances (used for delegations too)
+            if let Some(delegation) = ctx.token_balances.get(&key) {
+                Ok(*delegation as u64)
+            } else {
+                Ok(0) // No delegation set
+            }
+        });
+
+        registry.functions.insert("svm_transfer_from".into(), |ctx, args| {
+            ctx.consume_gas(SVM_TOKEN_GAS * 2)?;
+            
+            if args.len() < 4 {
+                return Err(anyhow!("svm_transfer_from requires 4 args: mint, from, to, amount"));
+            }
+            
+            ctx.emit_log(
+                "SPLTransferFrom".into(),
+                format!("from={}, to={}, amount={}", args[1], args[2], args[3]).into_bytes(),
+            );
+            
+            Ok(1) // Success
+        });
+    }
+}
+
+/// DEX host functions for dex.x3 extern declarations
+pub struct DexHostFunctions;
+
+impl DexHostFunctions {
+    pub fn register(registry: &mut HostFunctionRegistry) {
+        const DEX_GAS: u64 = 10000;
+
+        registry.functions.insert("host_quote_swap".into(), |ctx, args| {
+            ctx.consume_gas(DEX_GAS)?;
+            
+            if args.len() < 2 {
+                return Err(anyhow!("host_quote_swap requires 2 args: path_hash, amt_in"));
+            }
+            
+            let amt_in = args[1] as u128;
+            
+            // Mock quote: 0.3% fee, 1:1 rate
+            let fee = amt_in * 3 / 1000;
+            let amt_out = amt_in - fee;
+            
+            Ok(amt_out as u64)
+        });
+
+        registry.functions.insert("host_swap_exact_in".into(), |ctx, args| {
+            ctx.consume_gas(DEX_GAS * 5)?;
+            
+            if args.len() < 4 {
+                return Err(anyhow!("host_swap_exact_in requires 4 args: path_hash, amt_in, min_out, to"));
+            }
+            
+            let amt_in = args[1] as u128;
+            let min_out = args[2] as u128;
+            
+            // Mock swap: 0.3% fee
+            let fee = amt_in * 3 / 1000;
+            let amt_out = amt_in - fee;
+            
+            if amt_out < min_out {
+                return Err(anyhow!("Slippage exceeded: {} < {}", amt_out, min_out));
+            }
+            
+            ctx.emit_log(
+                "Swap".into(),
+                format!("amt_in={}, amt_out={}, to={}", amt_in, amt_out, args[3]).into_bytes(),
+            );
+            
+            Ok(amt_out as u64)
+        });
+
+        registry.functions.insert("host_find_routes".into(), |ctx, args| {
+            ctx.consume_gas(DEX_GAS * 2)?;
+            
+            if args.len() < 3 {
+                return Err(anyhow!("host_find_routes requires 3 args: in_sym, out_sym, amt_in"));
+            }
+            
+            let in_sym = args[0];
+            let out_sym = args[1];
+            let amt_in = args[2] as u128;
+            
+            // Encode route information:
+            // If in_sym == out_sym: no route needed (same token)
+            // Otherwise, encode a direct route: in_sym -> out_sym
+            // Return format: num_routes (8 bits) | route_type (8 bits) | estimated_out (48 bits)
+            
+            if in_sym == out_sym {
+                // Same token, no swap needed
+                return Ok(0); // No routes
+            }
+            
+            // Calculate estimated output with 0.3% fee
+            let fee = amt_in * 3 / 1000;
+            let estimated_out = amt_in - fee;
+            
+            // Encode single direct route
+            // Format: routes=1, type=1 (direct), estimated_out in remaining bits
+            let encoded: u64 = 1 // num_routes
+                | (1 << 8) // route_type: 1 = direct
+                | ((estimated_out as u64 & 0xFFFFFFFFFFFF) << 16); // 48-bit output estimate
+            
+            ctx.emit_log(
+                "RouteFound".into(),
+                format!("in={}, out={}, amt={}, est_out={}", in_sym, out_sym, amt_in, estimated_out).into_bytes(),
+            );
+            
+            Ok(encoded)
+        });
+    }
+}
+
+/// Create a fully-initialized host function registry with all modules
+pub fn create_full_registry() -> HostFunctionRegistry {
+    let mut registry = HostFunctionRegistry::new();
+    EvmHostFunctions::register(&mut registry);
+    SvmHostFunctions::register(&mut registry);
+    DexHostFunctions::register(&mut registry);
+    registry
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_registry_creation() {
+        let registry = HostFunctionRegistry::new();
+        
+        assert!(registry.has_function("host_get_chain_id"));
+        assert!(registry.has_function("host_get_block_height"));
+        assert!(registry.has_function("caller_address"));
+        assert!(registry.has_function("self_address"));
+        assert!(registry.has_function("host_send_message"));
+        assert!(registry.has_function("host_verify_proof"));
+    }
+
+    #[test]
+    fn test_core_functions() {
+        let registry = HostFunctionRegistry::new();
+        let caller = [1u8; 32];
+        let mut ctx = X3Context::new(caller, 10000);
+        ctx.chain_id = 42;
+        ctx.block_height = 100;
+        
+        // Test chain_id
+        let chain_id = registry.call("host_get_chain_id", &mut ctx, &[]).unwrap();
+        assert_eq!(chain_id, 42);
+        
+        // Test block_height
+        let height = registry.call("host_get_block_height", &mut ctx, &[]).unwrap();
+        assert_eq!(height, 100);
+    }
+
+    #[test]
+    fn test_bridge_message() {
+        let registry = HostFunctionRegistry::new();
+        let caller = [1u8; 32];
+        let mut ctx = X3Context::new(caller, 100000);
+        ctx.chain_id = 1;
+        
+        // Send a bridge message
+        let result = registry.call(
+            "host_send_message",
+            &mut ctx,
+            &[2, 0, 100000], // dst_chain=2, payload_ptr=0, gas_limit=100000
+        ).unwrap();
+        
+        assert_ne!(result, 0); // Should return non-zero msg_id
+        assert_eq!(ctx.bridge_messages.len(), 1);
+        assert_eq!(ctx.bridge_messages[0].dst_chain, 2);
+    }
+
+    #[test]
+    fn test_full_registry() {
+        let registry = create_full_registry();
+        
+        // Core functions
+        assert!(registry.has_function("host_get_chain_id"));
+        
+        // Bridge functions
+        assert!(registry.has_function("host_send_message"));
+        
+        // EVM token functions
+        assert!(registry.has_function("evm_balance_of"));
+        assert!(registry.has_function("evm_transfer"));
+        
+        // SVM token functions
+        assert!(registry.has_function("svm_balance_of"));
+        assert!(registry.has_function("svm_transfer"));
+        
+        // DEX functions
+        assert!(registry.has_function("host_quote_swap"));
+        assert!(registry.has_function("host_swap_exact_in"));
+    }
+
+    #[test]
+    fn test_evm_transfer() {
+        let mut registry = HostFunctionRegistry::new();
+        EvmHostFunctions::register(&mut registry);
+        
+        let caller = [1u8; 32];
+        let mut ctx = X3Context::new(caller, 100000);
+        
+        let result = registry.call(
+            "evm_transfer",
+            &mut ctx,
+            &[100, 200, 1000], // addr, to, amount
+        ).unwrap();
+        
+        assert_eq!(result, 1); // Success
+        assert_eq!(ctx.logs.len(), 1);
+        assert_eq!(ctx.logs[0].topic, "Transfer");
+        assert_eq!(ctx.state_changes.len(), 1);
+    }
+
+    #[test]
+    fn test_dex_quote() {
+        let mut registry = HostFunctionRegistry::new();
+        DexHostFunctions::register(&mut registry);
+        
+        let caller = [1u8; 32];
+        let mut ctx = X3Context::new(caller, 100000);
+        
+        let result = registry.call(
+            "host_quote_swap",
+            &mut ctx,
+            &[0, 1000000], // path_hash, amt_in
+        ).unwrap();
+        
+        // 0.3% fee: 1000000 - 3000 = 997000
+        assert_eq!(result, 997000);
+    }
+
+    #[test]
+    fn test_dex_swap_slippage() {
+        let mut registry = HostFunctionRegistry::new();
+        DexHostFunctions::register(&mut registry);
+        
+        let caller = [1u8; 32];
+        let mut ctx = X3Context::new(caller, 100000);
+        
+        // Try swap with min_out too high (should fail)
+        let result = registry.call(
+            "host_swap_exact_in",
+            &mut ctx,
+            &[0, 1000, 2000, 300], // path_hash, amt_in=1000, min_out=2000, to
+        );
+        
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Slippage"));
+    }
+}

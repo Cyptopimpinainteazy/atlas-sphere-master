@@ -1,0 +1,10 @@
+// 03: Function parameters
+fn add(a, b) {
+    let sum = a + b;
+    return sum;
+}
+
+fn main() {
+    let result = add(1, 2);
+    return result;
+}

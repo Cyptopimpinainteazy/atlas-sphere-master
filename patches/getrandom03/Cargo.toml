@@ -1,0 +1,25 @@
+[package]
+name = "getrandom"
+version = "0.3.4"
+authors = ["The Rand Project Developers"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Patched getrandom v0.3 for Substrate WASM runtime builds"
+documentation = "https://docs.rs/getrandom"
+repository = "https://github.com/rust-random/getrandom"
+keywords = ["random", "rng", "os"]
+categories = ["os", "no-std"]
+
+[features]
+default = ["std"]
+std = []
+wasm_js = []
+custom = []
+linux_disable_fallback = []
+rdrand = []
+
+[dependencies]
+cfg-if = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2.95", default-features = false, optional = true }

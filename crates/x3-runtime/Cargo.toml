@@ -1,0 +1,33 @@
+[package]
+name = "x3-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "X3 runtime integration - connects compiled WASM to Comit transactions"
+license = "MIT"
+
+[dependencies]
+# Core
+anyhow = "1.0"
+log = "0.4"
+thiserror = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+parity-scale-codec = { version = "3.6", features = ["derive"] }
+
+# Hashing
+blake2 = "0.10"
+sha2 = "0.10"
+hex = "0.4"
+
+# WASM execution
+wasmi = "0.31"
+
+[dev-dependencies]
+x3-compiler = { path = "../x3-compiler" }
+env_logger = "0.10"
+
+[features]
+default = []
+std = []

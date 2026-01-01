@@ -1,0 +1,80 @@
+[package]
+name = "pallet-atomic-trade-engine"
+version = "0.1.0"
+description = "Cross-VM Atomic Trading Engine for Atlas Sphere - enables atomic arbitrage and multi-hop trades across EVM and SVM"
+authors = ["Atlas Sphere Team"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+# SCALE codec
+codec = { package = "parity-scale-codec", version = "3.6.1", default-features = false, features = ["derive"] }
+scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+
+# Substrate primitives - use workspace versions for consistency
+sp-api = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+
+# Logging and serialization (std-only)
+log = { version = "0.4", default-features = false }
+serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
+
+# FRAME dependencies - use workspace versions
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+
+# Timestamp for oracle functionality
+pallet-timestamp = { workspace = true, default-features = false }
+
+# Local dependencies
+pallet-atlas-kernel = { path = "../atlas-kernel", default-features = false }
+
+# Optional: VM integration crates (std-only for now)
+atlas-evm-integration = { path = "../../crates/evm-integration", default-features = false, optional = true }
+atlas-svm-integration = { path = "../../crates/svm-integration", default-features = false, optional = true }
+
+[dev-dependencies]
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+pallet-balances = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "scale-info/std",
+    "sp-api/std",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "frame-support/std",
+    "frame-system/std",
+    "frame-benchmarking?/std",
+    "pallet-timestamp/std",
+    "pallet-atlas-kernel/std",
+    "atlas-evm-integration?/std",
+    "atlas-svm-integration?/std",
+    "log/std",
+    "serde",
+    "serde/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "pallet-atlas-kernel/runtime-benchmarks",
+]
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "pallet-atlas-kernel/try-runtime",
+]

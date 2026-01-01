@@ -1,0 +1,11 @@
+// 06: For loop variable scoping
+fn for_test() {
+    let mut sum = 0;
+    for (let mut i = 0; i < 10; i = i + 1) {
+        sum = sum + i;
+    }
+    for (let j in 0..5) {
+        sum = sum + j;
+    }
+    return sum;
+}

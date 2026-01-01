@@ -1,0 +1,205 @@
+{
+  "items": [
+    {
+      "Function": {
+        "name": {
+          "name": "f",
+          "span": {
+            "start": 3,
+            "end": 4
+          }
+        },
+        "params": [
+          {
+            "name": {
+              "name": "x",
+              "span": {
+                "start": 5,
+                "end": 6
+              }
+            },
+            "mutable": false,
+            "ty": null,
+            "span": {
+              "start": 5,
+              "end": 6
+            }
+          }
+        ],
+        "ret_ty": null,
+        "body": {
+          "statements": [
+            {
+              "Let": {
+                "name": {
+                  "name": "x",
+                  "span": {
+                    "start": 18,
+                    "end": 19
+                  }
+                },
+                "mutable": false,
+                "ty": null,
+                "initializer": {
+                  "Binary": {
+                    "op": "Add",
+                    "left": {
+                      "Identifier": {
+                        "name": "x",
+                        "span": {
+                          "start": 22,
+                          "end": 23
+                        }
+                      }
+                    },
+                    "right": {
+                      "Literal": {
+                        "literal": {
+                          "Integer": 1
+                        },
+                        "span": {
+                          "start": 26,
+                          "end": 27
+                        }
+                      }
+                    },
+                    "span": {
+                      "start": 22,
+                      "end": 27
+                    }
+                  }
+                },
+                "span": {
+                  "start": 14,
+                  "end": 27
+                }
+              }
+            },
+            {
+              "If": {
+                "condition": {
+                  "Literal": {
+                    "literal": {
+                      "Bool": true
+                    },
+                    "span": {
+                      "start": 37,
+                      "end": 41
+                    }
+                  }
+                },
+                "then_block": {
+                  "statements": [
+                    {
+                      "Let": {
+                        "name": {
+                          "name": "x",
+                          "span": {
+                            "start": 57,
+                            "end": 58
+                          }
+                        },
+                        "mutable": false,
+                        "ty": null,
+                        "initializer": {
+                          "Binary": {
+                            "op": "Mul",
+                            "left": {
+                              "Identifier": {
+                                "name": "x",
+                                "span": {
+                                  "start": 61,
+                                  "end": 62
+                                }
+                              }
+                            },
+                            "right": {
+                              "Literal": {
+                                "literal": {
+                                  "Integer": 2
+                                },
+                                "span": {
+                                  "start": 65,
+                                  "end": 66
+                                }
+                              }
+                            },
+                            "span": {
+                              "start": 61,
+                              "end": 66
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": 53,
+                          "end": 66
+                        }
+                      }
+                    },
+                    {
+                      "Return": [
+                        {
+                          "Identifier": {
+                            "name": "x",
+                            "span": {
+                              "start": 83,
+                              "end": 84
+                            }
+                          }
+                        },
+                        {
+                          "start": 76,
+                          "end": 84
+                        }
+                      ]
+                    }
+                  ],
+                  "span": {
+                    "start": 43,
+                    "end": 91
+                  }
+                },
+                "else_block": null,
+                "span": {
+                  "start": 33,
+                  "end": 91
+                }
+              }
+            },
+            {
+              "Return": [
+                {
+                  "Literal": {
+                    "literal": {
+                      "Integer": 0
+                    },
+                    "span": {
+                      "start": 103,
+                      "end": 104
+                    }
+                  }
+                },
+                {
+                  "start": 96,
+                  "end": 104
+                }
+              ]
+            }
+          ],
+          "span": {
+            "start": 8,
+            "end": 107
+          }
+        },
+        "span": {
+          "start": 0,
+          "end": 107
+        }
+      }
+    }
+  ],
+  "span": {
+    "start": 0,
+    "end": 107
+  }
+}

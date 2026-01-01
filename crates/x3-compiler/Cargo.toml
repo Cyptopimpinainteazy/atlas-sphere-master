@@ -1,0 +1,30 @@
+[package]
+name = "x3-compiler"
+version = "0.1.0"
+edition = "2021"
+authors = ["X3 Team"]
+description = "X3 Language Compiler: Dual-VM DeFi DSL with AI + ZK verification"
+
+[dependencies]
+tree-sitter = "0.20"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+clap = { version = "4.4", features = ["derive"] }
+anyhow = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+
+[dev-dependencies]
+insta = "1.33"
+tempfile = "3.8"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[[bin]]
+name = "x3c"
+path = "src/main.rs"

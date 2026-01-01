@@ -1,0 +1,21 @@
+// Test: Literal type inference
+// Tests that all literal types are correctly inferred
+
+fn test_integers() {
+    let positive = 42;       // u64
+    let negative = -10;      // i64  
+    let zero = 0;            // u64
+    return positive;
+}
+
+fn test_bools() {
+    let t = true;
+    let f = false;
+    return t;
+}
+
+fn test_strings() {
+    let greeting = "hello";
+    let empty = "";
+    return greeting;
+}

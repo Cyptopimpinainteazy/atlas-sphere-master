@@ -1,0 +1,14 @@
+// Test: Emit statements
+// Tests emit statement type checking
+
+fn test_emit() {
+    emit 42;
+    emit "event";
+    emit true;
+}
+
+fn test_emit_computed() {
+    let x = 10;
+    let y = 20;
+    emit x + y;
+}

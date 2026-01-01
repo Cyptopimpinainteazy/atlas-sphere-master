@@ -1,0 +1,27 @@
+[package]
+name = "pallet-invariants"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+codec = { workspace = true, default-features = false }
+scale-info = { workspace = true, default-features = false }
+
+[dev-dependencies]
+sp-io = { workspace = true, default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "frame-support/std",
+    "frame-system/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "codec/std",
+    "scale-info/std",
+    "sp-io/std",
+]

@@ -1,0 +1,19 @@
+{
+  "name": "vibe-bmad",
+  "version": "0.1.0",
+  "description": "Integration wrapper for BMAD Method (bmad-method) to use within the Atlas Sphere workspace",
+  "scripts": {
+    "install-bmad": "npx bmad-method@alpha install",
+    "install-bmad-stable": "npx bmad-method install",
+    "status": "npx bmad-method status",
+    "agent-install": "npx bmad-method agent-install",
+    "ci-status": "npx bmad-method status --json || npx bmad-method status || true",
+    "ci-install": "npx bmad-method install --skip-cleanup || npx bmad-method install || true"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/bmad-code-org/BMAD-METHOD",
+  "private": true
+}

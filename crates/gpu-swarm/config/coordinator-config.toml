@@ -1,0 +1,125 @@
+# GPU Swarm Coordinator Configuration
+# ====================================
+# Configuration file for running the central swarm coordinator
+
+[coordinator]
+# Coordinator node ID (leave blank to auto-generate)
+# coordinator_id = ""
+
+# Path to coordinator keypair
+keypair_path = "coordinator-keypair.json"
+
+# Listen addresses for P2P networking
+listen_addresses = ["/ip4/0.0.0.0/tcp/9100"]
+
+# Enable task persistence
+enable_persistence = true
+
+# Persistence database path
+persistence_path = "./swarm-data"
+
+[network]
+# Maximum number of nodes in the swarm
+max_nodes = 1000
+
+# Bootstrap peers (other coordinators for federation)
+bootstrap_peers = []
+
+# Enable mDNS for local peer discovery
+enable_mdns = true
+
+# Connection timeout in seconds
+connection_timeout_secs = 30
+
+# Node registration timeout in seconds
+registration_timeout_secs = 60
+
+[scheduler]
+# Scheduling strategy: RoundRobin, LeastLoaded, BestFit, LocalityAware, ReputationWeighted
+strategy = "ReputationWeighted"
+
+# Maximum tasks in global queue
+max_queue_size = 10000
+
+# Task timeout in seconds
+task_timeout_secs = 300
+
+# Enable priority queuing
+enable_priority_queue = true
+
+# Rebalance interval in seconds
+rebalance_interval_secs = 60
+
+[verification]
+# Minimum verifiers per task (for consensus)
+min_verifiers = 2
+
+# Maximum verifiers per task
+max_verifiers = 5
+
+# Verification timeout in seconds
+verification_timeout_secs = 60
+
+# Enable deterministic verification
+enable_deterministic_check = true
+
+# Penalty for failed verification (in reputation points)
+verification_failure_penalty = 10
+
+[reputation]
+# Initial reputation score for new nodes
+initial_score = 100
+
+# Maximum reputation score
+max_score = 1000
+
+# Minimum reputation to accept tasks
+min_score_for_tasks = 50
+
+# Score decay rate per hour
+decay_rate_per_hour = 0.01
+
+# Reward for successful task completion
+success_reward = 1
+
+# Penalty for task failure
+failure_penalty = 5
+
+# Penalty for going offline
+offline_penalty = 2
+
+[economics]
+# Base reward per task (in tokens)
+base_task_reward = 10
+
+# GPU time multiplier (reward per GPU-second)
+gpu_time_multiplier = 0.001
+
+# Verification reward (percentage of task reward)
+verification_reward_percent = 10
+
+# Minimum stake required to be a node
+min_node_stake = 1000
+
+# Minimum stake required to submit tasks
+min_submitter_stake = 100
+
+[metrics]
+# Enable Prometheus metrics endpoint
+enable_metrics = true
+
+# Metrics endpoint port
+metrics_port = 9201
+
+# Enable detailed metrics
+enable_detailed_metrics = true
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Log format: json, pretty
+format = "pretty"
+
+# Log file path (empty = stdout only)
+file = "coordinator.log"

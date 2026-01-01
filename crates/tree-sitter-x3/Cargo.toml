@@ -1,0 +1,25 @@
+[package]
+name = "tree-sitter-x3"
+version = "0.1.0"
+edition = "2021"
+authors = ["X3 Team"]
+description = "Tree-sitter grammar for X3 language"
+
+[dependencies]
+tree-sitter = "0.20"
+
+[build-dependencies]
+cc = "1.0"
+
+[lib]
+name = "tree_sitter_x3"
+path = "lib.rs"
+
+[[bin]]
+name = "tree-sitter-cli"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[features]
+default = []
+cli = []

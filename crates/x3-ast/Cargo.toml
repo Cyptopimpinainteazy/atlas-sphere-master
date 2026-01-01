@@ -1,0 +1,17 @@
+[package]
+name = "x3-ast"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+x3-common = { path = "../x3-common", default-features = false, optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+default = []
+std = [
+    "x3-common",
+    "x3-common/std",
+    "serde",
+]

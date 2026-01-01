@@ -1,0 +1,33 @@
+// Test: Binary operations type inference
+// Tests arithmetic, comparison, and logical operations
+
+fn test_arithmetic() {
+    let a = 10;
+    let b = 20;
+    let sum = a + b;
+    let diff = a - b;
+    let prod = a * b;
+    let quot = a / b;
+    let rem = a % b;
+    return sum;
+}
+
+fn test_comparison() {
+    let x = 5;
+    let y = 10;
+    let lt = x < y;
+    let gt = x > y;
+    let le = x <= y;
+    let ge = x >= y;
+    let eq = x == y;
+    let ne = x != y;
+    return lt;
+}
+
+fn test_logical() {
+    let a = true;
+    let b = false;
+    let and_result = a && b;
+    let or_result = a || b;
+    return and_result;
+}

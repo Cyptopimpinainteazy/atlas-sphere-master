@@ -1,0 +1,41 @@
+# Atlas Sphere Indexer Configuration
+# Copy to indexer.local.toml and customize for your environment
+
+[node]
+# Substrate node WebSocket URL
+url = "ws://127.0.0.1:9944"
+# Connection timeout in milliseconds
+timeout_ms = 30000
+# Maximum reconnection attempts (0 = infinite)
+max_reconnects = 0
+# Delay between reconnection attempts in milliseconds
+reconnect_delay_ms = 5000
+
+[database]
+# PostgreSQL connection URL
+# Format: postgres://user:password@host:port/database
+url = "postgres://indexer:indexer@localhost:5432/atlas_indexer"
+# Maximum connection pool size
+max_connections = 10
+# Connection acquire timeout in seconds
+acquire_timeout_secs = 30
+
+[indexer]
+# Starting block number (0 = genesis)
+start_block = 0
+# Number of blocks to process in each batch during catchup
+batch_size = 100
+# Maximum number of concurrent block processing tasks
+max_concurrent = 4
+# Poll interval in milliseconds when waiting for new blocks
+poll_interval_ms = 1000
+# Enable indexing of raw block data
+index_raw_data = false
+
+[metrics]
+# Enable Prometheus metrics
+enabled = true
+# Metrics endpoint host
+host = "127.0.0.1"
+# Metrics endpoint port
+port = 9615

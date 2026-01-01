@@ -1,0 +1,222 @@
+{
+  "items": [
+    {
+      "Agent": {
+        "name": {
+          "name": "Trader",
+          "span": {
+            "start": 6,
+            "end": 12
+          }
+        },
+        "items": [
+          {
+            "Function": {
+              "name": {
+                "name": "act",
+                "span": {
+                  "start": 22,
+                  "end": 25
+                }
+              },
+              "params": [
+                {
+                  "name": {
+                    "name": "ctx",
+                    "span": {
+                      "start": 26,
+                      "end": 29
+                    }
+                  },
+                  "mutable": false,
+                  "ty": null,
+                  "span": {
+                    "start": 26,
+                    "end": 29
+                  }
+                }
+              ],
+              "ret_ty": null,
+              "body": {
+                "statements": [
+                  {
+                    "If": {
+                      "condition": {
+                        "Binary": {
+                          "op": "Less",
+                          "left": {
+                            "FieldAccess": {
+                              "object": {
+                                "Identifier": {
+                                  "name": "ctx",
+                                  "span": {
+                                    "start": 45,
+                                    "end": 48
+                                  }
+                                }
+                              },
+                              "field": {
+                                "name": "price_in",
+                                "span": {
+                                  "start": 49,
+                                  "end": 57
+                                }
+                              },
+                              "span": {
+                                "start": 45,
+                                "end": 57
+                              }
+                            }
+                          },
+                          "right": {
+                            "FieldAccess": {
+                              "object": {
+                                "Identifier": {
+                                  "name": "ctx",
+                                  "span": {
+                                    "start": 60,
+                                    "end": 63
+                                  }
+                                }
+                              },
+                              "field": {
+                                "name": "price_out",
+                                "span": {
+                                  "start": 64,
+                                  "end": 73
+                                }
+                              },
+                              "span": {
+                                "start": 60,
+                                "end": 73
+                              }
+                            }
+                          },
+                          "span": {
+                            "start": 45,
+                            "end": 73
+                          }
+                        }
+                      },
+                      "then_block": {
+                        "statements": [
+                          {
+                            "Atomic": {
+                              "metadata": null,
+                              "body": {
+                                "statements": [
+                                  {
+                                    "Emit": {
+                                      "value": {
+                                        "Binary": {
+                                          "op": "Sub",
+                                          "left": {
+                                            "FieldAccess": {
+                                              "object": {
+                                                "Identifier": {
+                                                  "name": "ctx",
+                                                  "span": {
+                                                    "start": 119,
+                                                    "end": 122
+                                                  }
+                                                }
+                                              },
+                                              "field": {
+                                                "name": "price_out",
+                                                "span": {
+                                                  "start": 123,
+                                                  "end": 132
+                                                }
+                                              },
+                                              "span": {
+                                                "start": 119,
+                                                "end": 132
+                                              }
+                                            }
+                                          },
+                                          "right": {
+                                            "FieldAccess": {
+                                              "object": {
+                                                "Identifier": {
+                                                  "name": "ctx",
+                                                  "span": {
+                                                    "start": 135,
+                                                    "end": 138
+                                                  }
+                                                }
+                                              },
+                                              "field": {
+                                                "name": "price_in",
+                                                "span": {
+                                                  "start": 139,
+                                                  "end": 147
+                                                }
+                                              },
+                                              "span": {
+                                                "start": 135,
+                                                "end": 147
+                                              }
+                                            }
+                                          },
+                                          "span": {
+                                            "start": 119,
+                                            "end": 147
+                                          }
+                                        }
+                                      },
+                                      "span": {
+                                        "start": 114,
+                                        "end": 148
+                                      }
+                                    }
+                                  }
+                                ],
+                                "span": {
+                                  "start": 96,
+                                  "end": 162
+                                }
+                              },
+                              "span": {
+                                "start": 89,
+                                "end": 162
+                              }
+                            }
+                          }
+                        ],
+                        "span": {
+                          "start": 75,
+                          "end": 172
+                        }
+                      },
+                      "else_block": null,
+                      "span": {
+                        "start": 41,
+                        "end": 172
+                      }
+                    }
+                  }
+                ],
+                "span": {
+                  "start": 31,
+                  "end": 178
+                }
+              },
+              "span": {
+                "start": 19,
+                "end": 178
+              }
+            }
+          }
+        ],
+        "span": {
+          "start": 0,
+          "end": 0
+        }
+      }
+    }
+  ],
+  "span": {
+    "start": 0,
+    "end": 180
+  }
+}

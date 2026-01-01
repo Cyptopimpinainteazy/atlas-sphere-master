@@ -1,0 +1,151 @@
+[package]
+name = "atlas-sphere-runtime"
+version = "0.1.0"
+edition = "2021"
+publish = false
+authors = ["Traycer.AI <dev@atlas-sphere.io>"]
+description = "Atlas Sphere L1 Substrate runtime with dual-VM scaffolding."
+license = "Apache-2.0"
+# Ensures Atlas Sphere runtime Cargo manifest aligns with required Substrate runtime dependencies and feature flags.
+# Maintains std/runtime-benchmarks enablement and WASM build configuration for dual-VM execution tooling.
+build = "build.rs"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lib]
+name = "atlas_sphere_runtime"
+path = "src/lib.rs"
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+frame-system-rpc-runtime-api = { workspace = true, default-features = false }
+frame-executive = { workspace = true, default-features = false }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+
+pallet-aura = { workspace = true, default-features = false }
+pallet-grandpa = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+pallet-transaction-payment = { workspace = true, default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = false }
+pallet-sudo = { workspace = true, default-features = false, optional = true }
+pallet-collective = { workspace = true, default-features = false }
+
+pallet-atlas-kernel = { path = "../pallets/atlas-kernel", default-features = false }
+pallet-audit-governance = { path = "../pallets/audit-governance", default-features = false }
+pallet-swarm-media = { path = "../pallets/swarm-media", default-features = false }
+pallet-swarm-evolution = { path = "../pallets/swarm-evolution", default-features = false }
+pallet-invariants = { path = "../pallets/pallet-invariants", default-features = false }
+
+sp-api = { workspace = true, default-features = false }
+sp-block-builder = { workspace = true, default-features = false }
+sp-consensus-aura = { workspace = true, default-features = false }
+sp-consensus-grandpa = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-genesis-builder = { workspace = true, default-features = false }
+sp-inherents = { workspace = true, default-features = false }
+sp-offchain = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-session = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-transaction-pool = { workspace = true, default-features = false }
+sp-version = { workspace = true, default-features = false }
+sp-weights = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+
+log = { workspace = true, default-features = false }
+serde = { workspace = true, default-features = false, features = ["derive"] }
+getrandom = { workspace = true, default-features = false, features = ["wasm_js"] }
+
+# VM Integration crates (std-only, feature-gated for native execution)
+atlas-cross-vm-bridge = { path = "../crates/cross-vm-bridge", default-features = false, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# std-only VM integration crates are only available to NATIVE builds.
+atlas-evm-integration = { path = "../crates/evm-integration", default-features = false, optional = true }
+atlas-svm-integration = { path = "../crates/svm-integration", default-features = false, optional = true }
+x3-vm = { path = "../x3-lang/vm", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Force a wasm-compatible getrandom implementation for runtime WASM builds.
+getrandom = { workspace = true, default-features = false, features = ["wasm_js"] }
+
+[build-dependencies]
+substrate-wasm-builder = { workspace = true }
+
+[features]
+# Note: real-evm, real-svm, real-x3 enable real VM execution for NATIVE builds only
+# WASM builds always use deterministic mocks for consensus safety
+default = ["std"]
+dev = ["pallet-sudo"]
+
+# Real VM execution features (std-only, native builds)
+real-evm = ["std", "dep:atlas-evm-integration", "atlas-evm-integration/std", "atlas-evm-integration/frontier-executor"]
+real-svm = ["std", "dep:atlas-svm-integration", "atlas-svm-integration/std", "atlas-svm-integration/rbpf-executor"]
+real-x3 = ["std", "dep:x3-vm"]
+
+# Enable all real VMs for production native execution
+real-vms = ["real-evm", "real-svm", "real-x3"]
+
+std = [
+	"codec/std",
+	"scale-info/std",
+	"frame-support/std",
+	"frame-system/std",
+	"frame-system-rpc-runtime-api/std",
+	"frame-executive/std",
+	"frame-benchmarking?/std",
+	"pallet-aura/std",
+	"pallet-grandpa/std",
+	"pallet-timestamp/std",
+	"pallet-balances/std",
+	"pallet-transaction-payment/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-sudo?/std",
+	"pallet-collective/std",
+	"pallet-atlas-kernel/std",
+	"pallet-audit-governance/std",
+	"pallet-swarm-media/std",
+	"pallet-swarm-evolution/std",
+	"pallet-invariants/std",
+	"sp-api/std",
+	"sp-block-builder/std",
+	"sp-consensus-aura/std",
+	"sp-consensus-grandpa/std",
+	"sp-core/std",
+	"sp-genesis-builder/std",
+	"sp-inherents/std",
+	"sp-offchain/std",
+	"sp-runtime/std",
+	"sp-session/std",
+	"sp-std/std",
+	"sp-transaction-pool/std",
+	"sp-version/std",
+	"sp-weights/std",
+	"sp-io/std",
+	"log/std",
+	"serde/std",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+
+native = []
+
+disable-runtime-api = []
+
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

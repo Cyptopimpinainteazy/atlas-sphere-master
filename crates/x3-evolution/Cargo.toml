@@ -1,0 +1,39 @@
+[package]
+name = "x3-evolution"
+version = "0.1.0"
+edition = "2021"
+description = "X3 Strategy Evolution Engine - Genetic algorithms for bytecode mutation and fitness scoring"
+license = "MIT"
+authors = ["Atlas Sphere Team"]
+
+[dependencies]
+# X3 compiler stack
+x3-ast = { path = "../x3-ast" }
+x3-backend = { path = "../x3-backend" }
+x3-vm = { path = "../x3-vm" }
+x3-verifier = { path = "../x3-verifier" }
+
+# Core utilities
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+rand_chacha = "0.3"
+
+# Parallelism
+rayon = "1.8"
+
+# Hashing for determinism
+blake3 = "1.5"
+
+# Metrics
+tracing = "0.1"
+
+[dev-dependencies]
+criterion = "0.5"
+proptest = "1.4"
+
+[features]
+default = []
+parallel = []
+deterministic = []

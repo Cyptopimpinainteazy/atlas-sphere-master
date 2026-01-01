@@ -1,0 +1,58 @@
+[package]
+name = "atlas-x3-integration"
+version = "0.1.0"
+edition = "2021"
+description = "Atlas Sphere integration for X3 virtual machine and compiler"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# X3 core
+x3-vm = { path = "../x3-vm" }
+x3-compiler = { path = "../x3-compiler" }
+x3-backend = { path = "../x3-backend" }
+x3-common = { path = "../x3-common" }
+x3-verifier = { path = "../x3-verifier" }
+
+# Substrate primitives
+sp-core = { git = "https://github.com/paritytech/substrate", rev = "948fbd2", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate", rev = "948fbd2", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate", rev = "948fbd2", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate", rev = "948fbd2", default-features = false }
+frame-support = { git = "https://github.com/paritytech/substrate", rev = "948fbd2", default-features = false }
+
+# Encoding
+codec = { package = "parity-scale-codec", version = "3.6", default-features = false, features = ["derive"] }
+scale-info = { version = "2.10", default-features = false, features = ["derive"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+# Error handling
+thiserror = { version = "1.0", optional = true }
+
+# Logging
+log = { version = "0.4", default-features = false }
+
+[dev-dependencies]
+env_logger = "0.10"
+
+[features]
+default = ["std"]
+std = [
+    "sp-core/std",
+    "sp-std/std",
+    "sp-runtime/std",
+    "sp-io/std",
+    "frame-support/std",
+    "codec/std",
+    "scale-info/std",
+    "serde",
+    "thiserror",
+    "log/std",
+]
+# Enable contract compilation from source
+compile = []
+# Enable JIT compilation hints
+jit = ["x3-vm/jit-hints"]
+# Enable detailed gas metering
+gas-metering = ["x3-vm/gas-metering"]

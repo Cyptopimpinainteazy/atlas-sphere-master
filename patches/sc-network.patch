@@ -1,0 +1,9 @@
+--- a/client/network/src/protocol/message.rs
++++ b/client/network/src/protocol/message.rs
+@@ -116,7 +116,7 @@ pub enum Message<H, N, B, EH> {
+ 	/// Remote call response.
+ 	#[codec(index = 7)]
+ 	RemoteCallResponse(RemoteCallResponse),
+ 	/// Remote read request.
+ 	#[codec(index = 8)]
+ 	RemoteRead(RemoteRead<H>),

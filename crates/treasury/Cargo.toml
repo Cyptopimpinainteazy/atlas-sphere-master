@@ -1,0 +1,28 @@
+[package]
+name = "atlas-treasury"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sp-core = { version = "21.0.0", default-features = false }
+sp-std = { version = "8.0.0", default-features = false }
+sp-runtime = { version = "24.0.0", default-features = false }
+sp-io = { version = "23.0.0", default-features = false }
+parity-scale-codec = { version = "3.0.0", default-features = false, features = ["derive"] }
+scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+[features]
+default = ["std"]
+std = [
+    "sp-core/std",
+    "sp-std/std",
+    "sp-runtime/std",
+    "parity-scale-codec/std",
+    "scale-info/std",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

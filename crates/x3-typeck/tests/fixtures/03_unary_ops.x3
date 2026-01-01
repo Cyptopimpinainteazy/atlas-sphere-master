@@ -1,0 +1,20 @@
+// Test: Unary operations type inference
+// Tests negation and logical not
+
+fn test_negation() {
+    let x = 10;
+    let neg = -x;
+    return neg;
+}
+
+fn test_logical_not() {
+    let cond = true;
+    let inverted = !cond;
+    return inverted;
+}
+
+fn test_double_negation() {
+    let val = 5;
+    let double_neg = -(-val);
+    return double_neg;
+}

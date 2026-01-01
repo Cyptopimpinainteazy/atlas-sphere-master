@@ -1,0 +1,8 @@
+version: '3.8'
+services:
+  bmad:
+    build: .
+    container_name: vibe-bmad-installer
+    volumes:
+      - .:/workspace
+    command: "npx bmad-method@alpha install && npx bmad-method status"

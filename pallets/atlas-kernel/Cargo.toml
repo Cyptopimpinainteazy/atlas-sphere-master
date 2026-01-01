@@ -1,0 +1,70 @@
+[package]
+name = "pallet-atlas-kernel"
+version = "0.1.0"
+authors = ["Atlas Sphere Core Team <core@atlas-sphere.io>"]
+description = "Atlas Sphere runtime pallet providing Comit orchestration and canonical ledger management."
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://atlas-sphere.io"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+pallet-balances = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
+sp-api = { workspace = true, default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+minicbor = { version = "0.24.0", default-features = false, features = ["derive", "alloc"] }
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+serde = { version = "1.0.197", default-features = false, features = ["derive", "alloc"], optional = true }
+serde_json = { version = "1.0.117", default-features = false, features = ["alloc"], optional = true }
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+x3-htlc = { path = "../../crates/x3-htlc", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-balances/std",
+    "pallet-timestamp/std",
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "sp-api/std",
+    "sp-std/std",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "serde",
+    "serde/std",
+    "serde_json",
+    "serde_json/std",
+    "minicbor/std",
+    "hex/std",
+    "x3-htlc/std",
+    "frame-benchmarking?/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+]
+
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+]
+
+
+dev-bypass = []

@@ -1,0 +1,9 @@
+// 08: Atomic block scope
+fn atomic_test() {
+    let mut balance = 100;
+    atomic {
+        let temp = balance;
+        balance = temp - 10;
+    }
+    return balance;
+}

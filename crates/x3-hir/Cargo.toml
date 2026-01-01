@@ -1,0 +1,16 @@
+[package]
+name = "x3-hir"
+version = "0.1.0"
+edition = "2021"
+description = "High-level Intermediate Representation for the X3 language"
+publish = false
+
+[dependencies]
+x3-ast = { path = "../x3-ast" }
+x3-common = { path = "../x3-common" }
+x3-typeck = { path = "../x3-typeck" }
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+x3-parser = { path = "../x3-parser" }

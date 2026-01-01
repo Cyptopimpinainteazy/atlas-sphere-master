@@ -1,0 +1,5 @@
+// 01: Simple function with local variable
+fn main() {
+    let x = 42;
+    return x;
+}

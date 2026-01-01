@@ -1,0 +1,25 @@
+// Test: Variable binding and assignment
+// Tests let statements with and without type annotations
+
+fn test_bindings() {
+    let x = 42;
+    let y: u64 = 100;
+    let z = x + y;
+    return z;
+}
+
+fn test_mutable() {
+    let mut counter = 0;
+    counter = counter + 1;
+    counter = counter + 1;
+    return counter;
+}
+
+fn test_nested_shadowing() {
+    let x = 10;
+    if (true) {
+        let x = 20;
+        let y = x + 5;
+    }
+    return x;
+}

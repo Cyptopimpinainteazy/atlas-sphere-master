@@ -1,0 +1,476 @@
+{
+  "items": [
+    {
+      "Function": {
+        "name": {
+          "name": "loops",
+          "span": {
+            "start": 3,
+            "end": 8
+          }
+        },
+        "params": [],
+        "ret_ty": null,
+        "body": {
+          "statements": [
+            {
+              "Let": {
+                "name": {
+                  "name": "i",
+                  "span": {
+                    "start": 21,
+                    "end": 22
+                  }
+                },
+                "mutable": false,
+                "ty": null,
+                "initializer": {
+                  "Literal": {
+                    "literal": {
+                      "Integer": 0
+                    },
+                    "span": {
+                      "start": 25,
+                      "end": 26
+                    }
+                  }
+                },
+                "span": {
+                  "start": 17,
+                  "end": 26
+                }
+              }
+            },
+            {
+              "While": {
+                "condition": {
+                  "Binary": {
+                    "op": "Less",
+                    "left": {
+                      "Identifier": {
+                        "name": "i",
+                        "span": {
+                          "start": 40,
+                          "end": 41
+                        }
+                      }
+                    },
+                    "right": {
+                      "Literal": {
+                        "literal": {
+                          "Integer": 10
+                        },
+                        "span": {
+                          "start": 44,
+                          "end": 46
+                        }
+                      }
+                    },
+                    "span": {
+                      "start": 40,
+                      "end": 46
+                    }
+                  }
+                },
+                "body": {
+                  "statements": [
+                    {
+                      "Expr": {
+                        "Assign": {
+                          "target": {
+                            "name": "i",
+                            "span": {
+                              "start": 58,
+                              "end": 59
+                            }
+                          },
+                          "value": {
+                            "Binary": {
+                              "op": "Add",
+                              "left": {
+                                "Identifier": {
+                                  "name": "i",
+                                  "span": {
+                                    "start": 62,
+                                    "end": 63
+                                  }
+                                }
+                              },
+                              "right": {
+                                "Literal": {
+                                  "literal": {
+                                    "Integer": 1
+                                  },
+                                  "span": {
+                                    "start": 66,
+                                    "end": 67
+                                  }
+                                }
+                              },
+                              "span": {
+                                "start": 62,
+                                "end": 67
+                              }
+                            }
+                          },
+                          "span": {
+                            "start": 58,
+                            "end": 67
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "span": {
+                    "start": 48,
+                    "end": 74
+                  }
+                },
+                "span": {
+                  "start": 33,
+                  "end": 74
+                }
+              }
+            },
+            {
+              "Loop": {
+                "body": {
+                  "statements": [
+                    {
+                      "If": {
+                        "condition": {
+                          "Binary": {
+                            "op": "Greater",
+                            "left": {
+                              "Identifier": {
+                                "name": "i",
+                                "span": {
+                                  "start": 99,
+                                  "end": 100
+                                }
+                              }
+                            },
+                            "right": {
+                              "Literal": {
+                                "literal": {
+                                  "Integer": 20
+                                },
+                                "span": {
+                                  "start": 103,
+                                  "end": 105
+                                }
+                              }
+                            },
+                            "span": {
+                              "start": 99,
+                              "end": 105
+                            }
+                          }
+                        },
+                        "then_block": {
+                          "statements": [
+                            {
+                              "Break": {
+                                "span": {
+                                  "start": 109,
+                                  "end": 114
+                                }
+                              }
+                            }
+                          ],
+                          "span": {
+                            "start": 107,
+                            "end": 117
+                          }
+                        },
+                        "else_block": null,
+                        "span": {
+                          "start": 95,
+                          "end": 117
+                        }
+                      }
+                    },
+                    {
+                      "Expr": {
+                        "Assign": {
+                          "target": {
+                            "name": "i",
+                            "span": {
+                              "start": 126,
+                              "end": 127
+                            }
+                          },
+                          "value": {
+                            "Binary": {
+                              "op": "Add",
+                              "left": {
+                                "Identifier": {
+                                  "name": "i",
+                                  "span": {
+                                    "start": 130,
+                                    "end": 131
+                                  }
+                                }
+                              },
+                              "right": {
+                                "Literal": {
+                                  "literal": {
+                                    "Integer": 1
+                                  },
+                                  "span": {
+                                    "start": 134,
+                                    "end": 135
+                                  }
+                                }
+                              },
+                              "span": {
+                                "start": 130,
+                                "end": 135
+                              }
+                            }
+                          },
+                          "span": {
+                            "start": 126,
+                            "end": 135
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "span": {
+                    "start": 85,
+                    "end": 142
+                  }
+                },
+                "span": {
+                  "start": 80,
+                  "end": 142
+                }
+              }
+            },
+            {
+              "For": {
+                "kind": {
+                  "CStyle": {
+                    "init": {
+                      "Let": {
+                        "name": {
+                          "name": "j",
+                          "span": {
+                            "start": 157,
+                            "end": 158
+                          }
+                        },
+                        "mutable": false,
+                        "ty": null,
+                        "initializer": {
+                          "Literal": {
+                            "literal": {
+                              "Integer": 0
+                            },
+                            "span": {
+                              "start": 161,
+                              "end": 162
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": 153,
+                          "end": 162
+                        }
+                      }
+                    },
+                    "condition": {
+                      "Binary": {
+                        "op": "Less",
+                        "left": {
+                          "Identifier": {
+                            "name": "j",
+                            "span": {
+                              "start": 164,
+                              "end": 165
+                            }
+                          }
+                        },
+                        "right": {
+                          "Identifier": {
+                            "name": "i",
+                            "span": {
+                              "start": 168,
+                              "end": 169
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": 164,
+                          "end": 169
+                        }
+                      }
+                    },
+                    "update": {
+                      "Assign": {
+                        "target": {
+                          "name": "j",
+                          "span": {
+                            "start": 171,
+                            "end": 172
+                          }
+                        },
+                        "value": {
+                          "Binary": {
+                            "op": "Add",
+                            "left": {
+                              "Identifier": {
+                                "name": "j",
+                                "span": {
+                                  "start": 175,
+                                  "end": 176
+                                }
+                              }
+                            },
+                            "right": {
+                              "Literal": {
+                                "literal": {
+                                  "Integer": 1
+                                },
+                                "span": {
+                                  "start": 179,
+                                  "end": 180
+                                }
+                              }
+                            },
+                            "span": {
+                              "start": 175,
+                              "end": 180
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": 171,
+                          "end": 180
+                        }
+                      }
+                    }
+                  }
+                },
+                "body": {
+                  "statements": [
+                    {
+                      "Emit": {
+                        "value": {
+                          "Identifier": {
+                            "name": "j",
+                            "span": {
+                              "start": 197,
+                              "end": 198
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": 192,
+                          "end": 199
+                        }
+                      }
+                    }
+                  ],
+                  "span": {
+                    "start": 182,
+                    "end": 205
+                  }
+                },
+                "span": {
+                  "start": 148,
+                  "end": 205
+                }
+              }
+            },
+            {
+              "For": {
+                "kind": {
+                  "Range": {
+                    "variable": {
+                      "name": "k",
+                      "span": {
+                        "start": 220,
+                        "end": 221
+                      }
+                    },
+                    "range": {
+                      "start": {
+                        "Literal": {
+                          "literal": {
+                            "Integer": 0
+                          },
+                          "span": {
+                            "start": 225,
+                            "end": 226
+                          }
+                        }
+                      },
+                      "end": {
+                        "Literal": {
+                          "literal": {
+                            "Integer": 10
+                          },
+                          "span": {
+                            "start": 228,
+                            "end": 230
+                          }
+                        }
+                      },
+                      "span": {
+                        "start": 225,
+                        "end": 230
+                      }
+                    }
+                  }
+                },
+                "body": {
+                  "statements": [
+                    {
+                      "Emit": {
+                        "value": {
+                          "Identifier": {
+                            "name": "k",
+                            "span": {
+                              "start": 247,
+                              "end": 248
+                            }
+                          }
+                        },
+                        "span": {
+                          "start": 242,
+                          "end": 249
+                        }
+                      }
+                    }
+                  ],
+                  "span": {
+                    "start": 232,
+                    "end": 255
+                  }
+                },
+                "span": {
+                  "start": 211,
+                  "end": 255
+                }
+              }
+            }
+          ],
+          "span": {
+            "start": 11,
+            "end": 257
+          }
+        },
+        "span": {
+          "start": 0,
+          "end": 257
+        }
+      }
+    }
+  ],
+  "span": {
+    "start": 0,
+    "end": 257
+  }
+}

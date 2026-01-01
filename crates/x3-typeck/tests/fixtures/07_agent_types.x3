@@ -1,0 +1,28 @@
+// Test: Agent type definitions
+// Tests agent field and method types
+
+agent Counter {
+    let mut value: u64 = 0;
+
+    fn increment() {
+        value = value + 1;
+    }
+
+    fn get_value() -> u64 {
+        return value;
+    }
+
+    fn add(amount: u64) -> u64 {
+        value = value + amount;
+        return value;
+    }
+}
+
+agent Wallet {
+    let mut balance: u64 = 0;
+    const MAX_BALANCE: u64 = 1000000;
+
+    fn deposit(amount: u64) {
+        balance = balance + amount;
+    }
+}

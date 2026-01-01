@@ -1,0 +1,23 @@
+// Test: Atomic blocks type checking
+// Tests atomic block semantics
+
+fn test_atomic_basic() {
+    atomic {
+        let x = 1;
+        let y = x + 2;
+    }
+}
+
+fn test_atomic_with_guard() {
+    let guard = true;
+    atomic(guard) {
+        let value = 100;
+    }
+}
+
+fn test_atomic_return() {
+    atomic {
+        let result = 42;
+    }
+    return 0;
+}

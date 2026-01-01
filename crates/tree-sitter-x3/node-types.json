@@ -1,0 +1,80 @@
+[
+  {
+    "type": "program",
+    "named": true,
+    "fields": {
+      "modules": {
+        "multiple": true
+      }
+    }
+  },
+  {
+    "type": "module",
+    "named": true,
+    "fields": {
+      "imports": {
+        "multiple": true
+      },
+      "exports": {
+        "multiple": true
+      },
+      "items": {
+        "multiple": true
+      }
+    }
+  },
+  {
+    "type": "function",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false
+      },
+      "parameters": {
+        "multiple": true
+      },
+      "return_type": {
+        "multiple": false
+      },
+      "body": {
+        "multiple": true
+      }
+    }
+  },
+  {
+    "type": "struct",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false
+      },
+      "fields": {
+        "multiple": true
+      }
+    }
+  },
+  {
+    "type": "enum",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false
+      },
+      "variants": {
+        "multiple": true
+      }
+    }
+  },
+  {
+    "type": "strategy",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false
+      },
+      "methods": {
+        "multiple": true
+      }
+    }
+  }
+]

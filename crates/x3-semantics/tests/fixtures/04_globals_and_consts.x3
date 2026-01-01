@@ -1,0 +1,8 @@
+// 04: Global variables and constants
+let global_var = 100;
+const MAGIC: i32 = 42;
+
+fn use_globals() {
+    let local = global_var + MAGIC;
+    return local;
+}

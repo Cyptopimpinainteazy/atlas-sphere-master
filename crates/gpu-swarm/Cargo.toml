@@ -1,0 +1,110 @@
+[package]
+name = "gpu-swarm"
+version = "0.1.0"
+edition = "2021"
+description = "Distributed GPU compute swarm for X3 Atlas Sphere"
+authors = ["Atlas Sphere Team"]
+license = "MIT"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+
+[[bin]]
+name = "swarm-node"
+path = "src/bin/swarm-node.rs"
+
+[[bin]]
+name = "swarm-coordinator"
+path = "src/bin/swarm-coordinator.rs"
+
+[features]
+default = ["cuda"]
+cuda = []
+opencl = []
+metal = []
+vulkan = []
+
+[dependencies]
+# Async runtime
+futures = "0.3"
+async-trait = "0.1"
+
+# Networking
+# libp2p will be added later for full P2P implementation
+# libp2p = { version = "0.53", features = ["tcp", "noise", "yamux", "gossipsub", "mdns", "kad", "identify", "ping"] }
+quinn = "0.10"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_bytes = "0.11"
+bincode = "1.3"
+prost = "0.12"
+
+# Crypto
+blake2 = "0.10"
+blake3 = "1.5"
+sha2 = "0.10"
+ed25519-dalek = "2.1"
+rand = "0.8"
+getrandom = "0.3"
+
+# GPU abstraction (compile-time features)
+wgpu = { version = "23", optional = true }
+
+# Metrics & logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+prometheus = "0.13"
+
+# Utils
+thiserror = "1.0"
+anyhow = "1.0"
+parking_lot = "0.12"
+dashmap = "5.5"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+hex = "0.4"
+toml = "0.8"
+humantime-serde = "1.1"
+
+# X3 integration
+x3-vm = { path = "../x3-vm", optional = true }
+x3-mir = { path = "../x3-mir", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.35", features = ["full"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { version = "1.35", default-features = false, features = ["macros", "sync", "time", "rt-multi-thread"] }
+
+[dev-dependencies]
+# Testing framework
+tokio-test = "0.4"
+tempfile = "3.9"
+criterion = "0.5"
+
+# Test utilities
+test-case = "3.1"
+proptest = "1.4"
+
+[profile.dev]
+# Enable debug info for coverage
+debug = true
+opt-level = 0
+
+[profile.release]
+# Optimized for production
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.test]
+# Optimized for testing
+opt-level = 1
+debug = true
+
+[profile.bench]
+# Optimized for benchmarks
+opt-level = 3
+debug = false
+
+[workspace]

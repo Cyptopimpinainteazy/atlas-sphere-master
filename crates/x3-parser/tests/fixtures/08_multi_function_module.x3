@@ -1,0 +1,10 @@
+let RATE = 42;
+
+fn price(a, b) {
+    return a * b * RATE;
+}
+
+fn main() {
+    let x = price(2, 3);
+    emit x;
+}

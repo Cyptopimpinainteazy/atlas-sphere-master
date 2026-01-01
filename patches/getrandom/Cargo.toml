@@ -1,0 +1,32 @@
+[package]
+name = "getrandom"
+version = "0.2.16"
+authors = ["The Rand Project Developers"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "A small cross-platform library for retrieving random data from system source"
+documentation = "https://docs.rs/getrandom"
+repository = "https://github.com/rust-random/getrandom"
+keywords = ["random", "rng", "os"]
+categories = ["os", "no-std"]
+
+[features]
+default = ["std"]
+std = []
+js = ["wasm-bindgen", "js-sys"]
+
+[dependencies]
+cfg-if = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
+js-sys = { version = "0.3", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = { version = "0.2.95", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["minwindef", "ntdef", "winnt"] }
+
+[target.'cfg(target_os = "wasi")'.dependencies]
+wasi = "0.11"

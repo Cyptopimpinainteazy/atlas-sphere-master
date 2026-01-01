@@ -1,0 +1,19 @@
+[package]
+name = "x3-backend"
+version = "0.1.0"
+edition = "2021"
+description = "X3 bytecode backend: HIR → bytecode lowering for the X3 virtual machine"
+publish = false
+
+[dependencies]
+x3-ast = { path = "../x3-ast" }
+x3-hir = { path = "../x3-hir" }
+x3-mir = { path = "../x3-mir" }
+x3-common = { path = "../x3-common" }
+x3-typeck = { path = "../x3-typeck" }
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+
+[dev-dependencies]
+x3-parser = { path = "../x3-parser" }
+x3-lexer = { path = "../x3-lexer" }

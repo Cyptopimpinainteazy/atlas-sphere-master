@@ -1,0 +1,25 @@
+// Test: Function type checking
+// Tests function signatures, calls, and return types
+
+fn identity(x: u64) -> u64 {
+    return x;
+}
+
+fn add(a: u64, b: u64) -> u64 {
+    return a + b;
+}
+
+fn greet() -> bool {
+    return true;
+}
+
+fn test_calls() {
+    let result1 = identity(42);
+    let result2 = add(10, 20);
+    let result3 = greet();
+    return result1;
+}
+
+fn no_return() {
+    let x = 1;
+}

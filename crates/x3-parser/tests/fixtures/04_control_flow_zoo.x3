@@ -1,0 +1,11 @@
+fn test(a, b) {
+    if a > b {
+        return a;
+    } else {
+        let x = a + b;
+        if x < 10 {
+            return x * 2;
+        }
+    }
+    return 0;
+}

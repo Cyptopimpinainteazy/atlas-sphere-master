@@ -1,0 +1,62 @@
+[package]
+name = "atlas-indexer"
+version = "0.1.0"
+edition = "2021"
+description = "Blockchain indexer for Atlas Sphere"
+authors = ["Atlas Sphere Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+keywords = ["blockchain", "indexer", "substrate", "postgres"]
+categories = ["database", "asynchronous"]
+
+[[bin]]
+name = "atlas-indexer"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "signal", "sync", "time"] }
+futures = { workspace = true }
+
+# Substrate client
+subxt = { version = "0.32", features = ["substrate-compat"] }
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "chrono", "uuid"] }
+
+# Serialization
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true }
+hex = "0.4"
+
+# Hashing
+sp-core-hashing = "9.0"
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = "1.0"
+
+# CLI
+clap = { workspace = true, features = ["derive", "env"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Metrics
+prometheus = "0.13"
+
+# HTTP server for metrics/health
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"

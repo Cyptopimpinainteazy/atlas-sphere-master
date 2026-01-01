@@ -1,0 +1,13 @@
+let GLOBAL_A = 7;
+
+agent Mega {
+    fn run(ctx) {
+        let z = GLOBAL_A + 1;
+
+        for (let i = 0; i < z; i = i + 1) {
+            emit i * 2;
+        }
+
+        return z;
+    }
+}

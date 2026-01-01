@@ -1,0 +1,94 @@
+# GPU Swarm Node Configuration
+# =============================
+# Configuration file for running a GPU swarm compute node
+
+[node]
+# Unique node identifier (leave blank to auto-generate)
+# node_id = ""
+
+# Path to keypair file for node identity
+keypair_path = "node-keypair.json"
+
+# Listen addresses for P2P networking
+listen_addresses = ["/ip4/0.0.0.0/tcp/9100"]
+
+# Minimum stake required to participate (in tokens)
+min_stake = 1000
+
+# Types of tasks this node will accept
+accepted_task_types = ["X3Bytecode", "MempoolSimulation", "RouteOptimization", "ProofGeneration"]
+
+[network]
+# Coordinator address to connect to
+coordinator_address = "127.0.0.1:9100"
+
+# Bootstrap peers for P2P discovery
+bootstrap_peers = []
+
+# Enable mDNS for local peer discovery
+enable_mdns = true
+
+# Maximum number of peers to connect to
+max_peers = 50
+
+# Connection timeout in seconds
+connection_timeout_secs = 30
+
+# Heartbeat interval in seconds
+heartbeat_interval_secs = 30
+
+[scheduler]
+# Scheduling strategy: RoundRobin, LeastLoaded, BestFit, LocalityAware, ReputationWeighted
+strategy = "BestFit"
+
+# Maximum concurrent tasks per node
+max_concurrent_tasks = 4
+
+# Maximum tasks in queue
+max_queue_size = 1000
+
+# Task timeout in seconds
+task_timeout_secs = 300
+
+[verification]
+# Minimum number of verifiers required per task
+min_verifiers = 2
+
+# Verification timeout in seconds
+verification_timeout_secs = 60
+
+# Enable deterministic verification (re-execute and compare)
+enable_deterministic_check = true
+
+[gpu]
+# GPU backends to use (cuda, opencl, vulkan, metal)
+enabled_backends = ["vulkan"]
+
+# Maximum VRAM to use (0 = unlimited)
+max_vram_bytes = 0
+
+# Reserve VRAM for system (in bytes)
+reserved_vram_bytes = 536870912  # 512 MB
+
+# Power limit in watts (0 = no limit)
+power_limit_watts = 0
+
+[metrics]
+# Enable Prometheus metrics endpoint
+enable_metrics = true
+
+# Metrics endpoint port
+metrics_port = 9200
+
+# Enable detailed GPU metrics
+enable_gpu_metrics = true
+
+[logging]
+# Log level: trace, debug, info, warn, error
+level = "info"
+
+# Log format: json, pretty
+format = "pretty"
+
+# Log file path (empty = stdout only)
+file = ""

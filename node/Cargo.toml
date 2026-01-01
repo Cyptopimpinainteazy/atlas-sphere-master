@@ -1,0 +1,89 @@
+[package]
+name = "atlas-sphere-node"
+version = "0.1.0"
+edition = "2021"
+publish = false
+authors = ["Atlas Sphere Core Engineering <engineering@atlas-sphere.io>"]
+license = "Apache-2.0"
+description = "Atlas Sphere L1 Substrate node binary with dual-VM readiness."
+repository = "https://github.com/atlas-sphere/core"
+default-run = "atlas-sphere-node"
+
+[[bin]]
+name = "atlas-sphere-node"
+path = "src/main.rs"
+
+[dependencies]
+atlas-sphere-runtime = { path = "../runtime", features = ["std"] }
+atlas-evm-integration = { path = "../crates/evm-integration", default-features = false, features = ["std"] }
+pallet-atlas-kernel = { path = "../pallets/atlas-kernel", features = ["std"] }
+pallet-swarm-evolution = { path = "../pallets/swarm-evolution", features = ["std"] }
+pallet-swarm-media = { path = "../pallets/swarm-media", features = ["std"] }
+# swarm-media crate disabled - has compilation errors, pallet is included in runtime
+# swarm-media = { path = "../crates/swarm-media" }
+
+async-trait = "0.1"
+clap = { version = "4.4", features = ["derive"] }
+futures = "0.3"
+futures-util = { version = "0.3", default-features = false }
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+ethereum = { version = "0.14", default-features = false }
+ethereum-types = { version = "0.14", default-features = false }
+parity-scale-codec = { version = "3.6", default-features = false, features = ["derive"] }
+jsonrpsee = { workspace = true, features = ["macros", "server", "client"] }
+tokio = { version = "1.37", default-features = false }
+
+
+
+sc-basic-authorship = { workspace = true }
+sc-chain-spec = { workspace = true }
+sc-cli = { workspace = true }
+sc-client-api = { workspace = true }
+sc-consensus = { workspace = true }
+sc-consensus-aura = { workspace = true }
+sc-consensus-grandpa = { workspace = true }
+sc-executor = { workspace = true }
+sc-keystore = { workspace = true }
+sc-network = { workspace = true }
+sc-rpc = { workspace = true }
+sc-rpc-api = { workspace = true }
+sc-service = { workspace = true, features = ["rocksdb"] }
+sc-telemetry = { workspace = true }
+sc-transaction-pool = { workspace = true }
+sc-transaction-pool-api = { workspace = true }
+
+sp-api = { workspace = true }
+sp-block-builder = { workspace = true }
+sp-blockchain = { workspace = true }
+sp-consensus = { workspace = true }
+sp-consensus-aura = { workspace = true }
+sp-consensus-grandpa = { workspace = true }
+sp-core = { workspace = true }
+sp-inherents = { workspace = true }
+sp-runtime = { workspace = true }
+sp-session = { workspace = true }
+sp-transaction-pool = { workspace = true }
+sp-io = { workspace = true }
+sp-timestamp = { workspace = true }
+
+substrate-frame-rpc-system = { workspace = true }
+pallet-transaction-payment-rpc = { workspace = true }
+
+frame-benchmarking-cli = { workspace = true, optional = true, default-features = false }
+frame-try-runtime = { workspace = true, optional = true, default-features = false }
+
+[features]
+default = ["cli"]
+cli = []
+
+native = ["atlas-sphere-runtime/native"]
+
+runtime-benchmarks = [
+    "atlas-sphere-runtime/runtime-benchmarks",
+]
+
+try-runtime = [
+    "atlas-sphere-runtime/try-runtime",
+]

@@ -1,0 +1,44 @@
+[package]
+name = "rustix"
+version = "0.38.21"
+authors = ["Dan Gohman <dev@sunfishcode.online>", "Jakub Konka <kubkon@jakubkonka.com>"]
+edition = "2021"
+license = "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT"
+description = "Safe Rust bindings to POSIX/Unix/Linux/Winsock2 syscalls"
+documentation = "https://docs.rs/rustix"
+repository = "https://github.com/bytecodealliance/rustix"
+keywords = ["api-bindings", "linux", "unix", "posix", "syscall"]
+categories = ["os", "api-bindings", "no-std"]
+
+[features]
+default = ["std", "use-libc-auxv"]
+std = ["alloc", "libc?/std"]
+alloc = []
+use-libc-auxv = ["libc"]
+fs = []
+io_uring = ["fs"]
+mm = []
+net = []
+param = []
+pipe = []
+process = []
+rand = []
+shm = []
+stdio = []
+system = []
+termios = []
+thread = []
+time = []
+
+[dependencies]
+bitflags = "2.4"
+errno = { path = "../errno" }
+libc = { version = "0.2.95", default-features = false, optional = true }
+linux-raw-sys = { version = "0.4.3", default-features = false, optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+libc = { version = "0.2.95", default-features = false, optional = true }
+linux-raw-sys = { version = "0.4.3", default-features = false, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# No additional dependencies for WASM

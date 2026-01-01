@@ -1,0 +1,43 @@
+[package]
+name = "atlas-cross-vm-bridge"
+version = "0.1.0"
+authors = ["Atlas Sphere Core Team <core@atlas-sphere.io>"]
+description = "Atlas Sphere cross-VM bridge providing atomic dual-VM operation orchestration"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+
+# X3 Language integration for cross-chain smart contracts
+x3-vm = { path = "../../x3-lang/vm", default-features = false, optional = true }
+x3-common = { path = "../../x3-lang/crates/x3-common", default-features = false, optional = true }
+x3-ast = { path = "../../x3-lang/crates/x3-ast", default-features = false, optional = true }
+x3-tools = { path = "../../x3-lang/crates/x3-tools", default-features = false, optional = true }
+
+[features]
+default = ["std"]
+std = [
+    "frame-support/std",
+    "frame-system/std",
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "sp-runtime/std",
+    "sp-std/std",
+]
+# X3 support is optional - enable only for native builds, not WASM
+x3-support = [
+    "x3-vm",
+    "x3-common",
+    "x3-ast",
+    "x3-tools",
+]
+
+[lib]
+crate-type = ["rlib"]

@@ -1,0 +1,17 @@
+[package]
+name = "substrate-prometheus-endpoint"
+version = "0.10.0-dev"
+edition = "2021"
+license = "Apache-2.0"
+description = "Prometheus endpoint for Substrate - patched for protobuf compatibility"
+
+[dependencies]
+hyper = { version = "0.14.16", default-features = false, features = ["http1", "server", "tcp"] }
+log = "0.4.17"
+prometheus = { version = "0.13", default-features = false }
+thiserror = "1.0"
+tokio = { version = "1.22.0", features = ["parking_lot"] }
+
+[features]
+default = ["runtime-metrics"]
+runtime-metrics = []

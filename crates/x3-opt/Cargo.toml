@@ -1,0 +1,21 @@
+[package]
+name = "x3-opt"
+version = "0.1.0"
+edition = "2021"
+description = "X3 MIR optimizer: constant folding, DCE, peephole, copy propagation"
+publish = false
+
+[dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+log = { version = "0.4", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+x3-ast = { path = "../x3-ast" }
+x3-common = { path = "../x3-common" }
+x3-mir = { path = "../x3-mir" }
+x3-vm = { path = "../x3-vm" }
+x3-backend = { path = "../x3-backend" }
+
+[dev-dependencies]
+x3-hir = { path = "../x3-hir" }

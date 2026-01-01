@@ -1,0 +1,12 @@
+// 05: Loop scopes with break/continue
+fn loop_test() {
+    let mut i = 0;
+    while (i < 10) {
+        if (i > 5) {
+            break;
+        }
+        i = i + 1;
+        continue;
+    }
+    return i;
+}

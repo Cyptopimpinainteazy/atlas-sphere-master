@@ -1,0 +1,59 @@
+[package]
+name = "atlas-gateway"
+version = "0.1.0"
+edition = "2021"
+description = "REST and GraphQL API gateway for Atlas Sphere indexed data"
+authors = ["Atlas Sphere Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+keywords = ["blockchain", "api", "graphql", "rest"]
+categories = ["web-programming::http-server", "asynchronous"]
+
+[[bin]]
+name = "atlas-gateway"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "signal"] }
+
+# Web framework
+axum = { version = "0.6", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.4", features = ["cors", "trace", "compression-gzip"] }
+
+# GraphQL
+async-graphql = { version = "6.0", features = ["chrono", "uuid"] }
+async-graphql-axum = "6.0"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "chrono", "uuid"] }
+
+# Serialization
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = "1.0"
+
+# CLI
+clap = { workspace = true, features = ["derive", "env"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Configuration
+config = "0.14"
+dotenvy = "0.15"
+
+# Utilities
+uuid = { version = "1.7", features = ["serde", "v4"] }
+
+[dev-dependencies]
+reqwest = { version = "0.11", features = ["json"] }
+tokio-test = "0.4"

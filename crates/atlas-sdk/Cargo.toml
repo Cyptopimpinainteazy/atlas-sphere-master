@@ -1,0 +1,54 @@
+[package]
+name = "atlas-sdk"
+version = "0.1.0"
+edition = "2021"
+description = "Rust SDK for Atlas Sphere blockchain - dual VM (EVM + SVM) interaction"
+authors = ["Atlas Sphere Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+keywords = ["blockchain", "substrate", "evm", "svm", "sdk"]
+categories = ["cryptography::cryptocurrencies", "api-bindings"]
+
+[dependencies]
+# Substrate / Polkadot SDK (from workspace)
+sp-core = { workspace = true, default-features = false, features = ["std"] }
+sp-runtime = { workspace = true, default-features = false, features = ["std"] }
+codec = { workspace = true, default-features = false, features = ["std"] }
+
+# Crypto
+hex = { version = "0.4", default-features = false, features = ["alloc"] }
+blake2 = { version = "0.10", default-features = false }
+
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "sync", "time"] }
+futures = { workspace = true }
+
+# Serialization
+serde = { workspace = true, features = ["derive", "std"] }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = "1.0"
+
+# HTTP client (for RPC)
+reqwest = { version = "0.11", features = ["json"] }
+
+# WebSocket (for subscriptions)
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+url = "2.5"
+
+# Logging
+tracing = "0.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[features]
+default = ["std"]
+std = [
+    "sp-core/std",
+    "sp-runtime/std",
+    "codec/std",
+    "hex/std",
+]

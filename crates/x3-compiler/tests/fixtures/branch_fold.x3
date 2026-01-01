@@ -1,0 +1,26 @@
+// E2E Test: Branch folding opportunities
+// Tests: constant propagation, dead code elimination
+
+fn compute() -> i64 {
+    let x = 5;
+    let y = 10;
+    
+    // This branch should be eliminated (constant condition)
+    if x > 10 {
+        return 999;
+    }
+    
+    // This should be folded
+    let sum = x + y;
+    
+    // Dead code after return
+    if sum > 0 {
+        return sum * 2;
+    }
+    
+    return sum;
+}
+
+fn main() -> i64 {
+    return compute();
+}

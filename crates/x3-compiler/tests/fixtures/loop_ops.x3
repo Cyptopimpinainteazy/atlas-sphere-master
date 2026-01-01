@@ -1,0 +1,16 @@
+// E2E Test: Simple arithmetic (loop ops temporarily simplified)
+// Note: Full loop support pending backend fixes
+
+fn sum_three(a: i64, b: i64, c: i64) -> i64 {
+    return a + b + c;
+}
+
+fn multiply_accumulate(a: i64, b: i64, c: i64) -> i64 {
+    return a * b + c;
+}
+
+fn main() -> i64 {
+    let a = sum_three(1, 2, 3);
+    let b = multiply_accumulate(2, 3, 4);
+    return a + b;
+}

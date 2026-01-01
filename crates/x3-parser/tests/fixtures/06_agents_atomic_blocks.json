@@ -1,0 +1,244 @@
+{
+  "items": [
+    {
+      "Agent": {
+        "name": {
+          "name": "Arbiter",
+          "span": {
+            "start": 6,
+            "end": 13
+          }
+        },
+        "items": [
+          {
+            "Function": {
+              "name": {
+                "name": "eval",
+                "span": {
+                  "start": 23,
+                  "end": 27
+                }
+              },
+              "params": [
+                {
+                  "name": {
+                    "name": "ctx",
+                    "span": {
+                      "start": 28,
+                      "end": 31
+                    }
+                  },
+                  "mutable": false,
+                  "ty": null,
+                  "span": {
+                    "start": 28,
+                    "end": 31
+                  }
+                }
+              ],
+              "ret_ty": null,
+              "body": {
+                "statements": [
+                  {
+                    "Atomic": {
+                      "metadata": null,
+                      "body": {
+                        "statements": [
+                          {
+                            "Let": {
+                              "name": {
+                                "name": "a",
+                                "span": {
+                                  "start": 68,
+                                  "end": 69
+                                }
+                              },
+                              "mutable": false,
+                              "ty": null,
+                              "initializer": {
+                                "FieldAccess": {
+                                  "object": {
+                                    "Identifier": {
+                                      "name": "ctx",
+                                      "span": {
+                                        "start": 72,
+                                        "end": 75
+                                      }
+                                    }
+                                  },
+                                  "field": {
+                                    "name": "price_a",
+                                    "span": {
+                                      "start": 76,
+                                      "end": 83
+                                    }
+                                  },
+                                  "span": {
+                                    "start": 72,
+                                    "end": 83
+                                  }
+                                }
+                              },
+                              "span": {
+                                "start": 64,
+                                "end": 83
+                              }
+                            }
+                          },
+                          {
+                            "Let": {
+                              "name": {
+                                "name": "b",
+                                "span": {
+                                  "start": 101,
+                                  "end": 102
+                                }
+                              },
+                              "mutable": false,
+                              "ty": null,
+                              "initializer": {
+                                "FieldAccess": {
+                                  "object": {
+                                    "Identifier": {
+                                      "name": "ctx",
+                                      "span": {
+                                        "start": 105,
+                                        "end": 108
+                                      }
+                                    }
+                                  },
+                                  "field": {
+                                    "name": "price_b",
+                                    "span": {
+                                      "start": 109,
+                                      "end": 116
+                                    }
+                                  },
+                                  "span": {
+                                    "start": 105,
+                                    "end": 116
+                                  }
+                                }
+                              },
+                              "span": {
+                                "start": 97,
+                                "end": 116
+                              }
+                            }
+                          },
+                          {
+                            "If": {
+                              "condition": {
+                                "Binary": {
+                                  "op": "Less",
+                                  "left": {
+                                    "Identifier": {
+                                      "name": "a",
+                                      "span": {
+                                        "start": 135,
+                                        "end": 136
+                                      }
+                                    }
+                                  },
+                                  "right": {
+                                    "Identifier": {
+                                      "name": "b",
+                                      "span": {
+                                        "start": 139,
+                                        "end": 140
+                                      }
+                                    }
+                                  },
+                                  "span": {
+                                    "start": 135,
+                                    "end": 140
+                                  }
+                                }
+                              },
+                              "then_block": {
+                                "statements": [
+                                  {
+                                    "Emit": {
+                                      "value": {
+                                        "Binary": {
+                                          "op": "Sub",
+                                          "left": {
+                                            "Identifier": {
+                                              "name": "b",
+                                              "span": {
+                                                "start": 165,
+                                                "end": 166
+                                              }
+                                            }
+                                          },
+                                          "right": {
+                                            "Identifier": {
+                                              "name": "a",
+                                              "span": {
+                                                "start": 169,
+                                                "end": 170
+                                              }
+                                            }
+                                          },
+                                          "span": {
+                                            "start": 165,
+                                            "end": 170
+                                          }
+                                        }
+                                      },
+                                      "span": {
+                                        "start": 160,
+                                        "end": 171
+                                      }
+                                    }
+                                  }
+                                ],
+                                "span": {
+                                  "start": 142,
+                                  "end": 185
+                                }
+                              },
+                              "else_block": null,
+                              "span": {
+                                "start": 131,
+                                "end": 185
+                              }
+                            }
+                          }
+                        ],
+                        "span": {
+                          "start": 50,
+                          "end": 195
+                        }
+                      },
+                      "span": {
+                        "start": 43,
+                        "end": 195
+                      }
+                    }
+                  }
+                ],
+                "span": {
+                  "start": 33,
+                  "end": 201
+                }
+              },
+              "span": {
+                "start": 20,
+                "end": 201
+              }
+            }
+          }
+        ],
+        "span": {
+          "start": 0,
+          "end": 0
+        }
+      }
+    }
+  ],
+  "span": {
+    "start": 0,
+    "end": 203
+  }
+}

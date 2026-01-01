@@ -1,0 +1,13 @@
+// 07: Agent scope
+agent Counter {
+    let mut count = 0;
+    
+    fn increment() {
+        count = count + 1;
+        return count;
+    }
+    
+    fn get() {
+        return count;
+    }
+}

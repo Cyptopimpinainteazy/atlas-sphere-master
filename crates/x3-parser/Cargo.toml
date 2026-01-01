@@ -1,0 +1,12 @@
+[package]
+name = "x3-parser"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+x3-common = { path = "../x3-common" }
+x3-lexer = { path = "../x3-lexer" }
+x3-ast = { path = "../x3-ast" }
+thiserror = "1.0"
+serde_json = "1.0"

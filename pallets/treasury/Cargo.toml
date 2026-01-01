@@ -1,0 +1,57 @@
+[package]
+name = "pallet-treasury"
+version = "0.1.0"
+authors = ["Atlas Sphere Core Team <core@atlas-sphere.io>"]
+description = "X3Chain treasury pallet with multi-sig spending, recurring payments, yield strategies, and emergency controls."
+edition = "2021"
+license = "Apache-2.0"
+homepage = "https://atlas-sphere.io"
+repository = "https://github.com/atlas-sphere/atlas-sphere"
+publish = false
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[lib]
+crate-type = ["rlib"]
+
+[dependencies]
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+pallet-balances = { workspace = true, default-features = false }
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+serde = { version = "1.0.197", default-features = false, features = ["derive", "alloc"] }
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+
+[dev-dependencies]
+sp-io = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-balances/std",
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "sp-std/std",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "serde/std",
+    "frame-benchmarking?/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+]
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+]

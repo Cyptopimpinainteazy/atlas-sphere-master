@@ -1,0 +1,14 @@
+[package]
+name = "parity-wasm"
+version = "0.45.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+description = "WebAssembly binary format serialization/deserialization"
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[dependencies]
+byteorder = "1.3"
+
+[features]
+default = ["std"]
+std = []
