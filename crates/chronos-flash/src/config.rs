@@ -6,6 +6,21 @@ use std::time::Duration;
 
 use crate::types::ChainId;
 
+fn env_csv_urls(var: &str) -> Option<Vec<String>> {
+    let raw = std::env::var(var).ok()?;
+    let urls: Vec<String> = raw
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+        .collect();
+    if urls.is_empty() { None } else { Some(urls) }
+}
+
+fn env_first_url(var: &str) -> Option<String> {
+    env_csv_urls(var).and_then(|mut v| v.drain(..).next())
+}
+
 /// Main configuration for ChronosFlash oracle
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChronosConfig {
@@ -70,12 +85,20 @@ pub struct ChainConfig {
 impl ChainConfig {
     /// Create config for Ethereum mainnet
     pub fn ethereum() -> Self {
+        let rpc_endpoints = env_csv_urls("ETHEREUM_MAINNET_RPC")
+            .unwrap_or_else(|| vec!["https://eth.llamarpc.com".to_string()]);
+        let ws_endpoints = env_csv_urls("ETHEREUM_MAINNET_WSS")
+            .unwrap_or_else(|| vec!["wss://eth.llamarpc.com".to_string()]);
+
         Self {
             chain_id: 1,
             name: "Ethereum".to_string(),
-            rpc_endpoints: vec!["https://eth.llamarpc.com".to_string()],
-            ws_endpoints: vec!["wss://eth.llamarpc.com".to_string()],
-            mempool_endpoint: Some("wss://mempool.eth.llamarpc.com".to_string()),
+            rpc_endpoints,
+            ws_endpoints: ws_endpoints.clone(),
+            mempool_endpoint: Some(
+                env_first_url("ETHEREUM_MEMPOOL_WSS")
+                    .unwrap_or_else(|| ws_endpoints.first().cloned().unwrap_or_default()),
+            ),
             block_time_ms: 12000,
             confirmation_blocks: 2,
             gas_price_multiplier: 1.1,
@@ -87,12 +110,20 @@ impl ChainConfig {
 
     /// Create config for Polygon
     pub fn polygon() -> Self {
+        let rpc_endpoints = env_csv_urls("POLYGON_MAINNET_RPC")
+            .unwrap_or_else(|| vec!["https://polygon.llamarpc.com".to_string()]);
+        let ws_endpoints = env_csv_urls("POLYGON_MAINNET_WSS")
+            .unwrap_or_else(|| vec!["wss://polygon.llamarpc.com".to_string()]);
+
         Self {
             chain_id: 137,
             name: "Polygon".to_string(),
-            rpc_endpoints: vec!["https://polygon.llamarpc.com".to_string()],
-            ws_endpoints: vec!["wss://polygon.llamarpc.com".to_string()],
-            mempool_endpoint: Some("wss://mempool.polygon.llamarpc.com".to_string()),
+            rpc_endpoints,
+            ws_endpoints: ws_endpoints.clone(),
+            mempool_endpoint: Some(
+                env_first_url("POLYGON_MEMPOOL_WSS")
+                    .unwrap_or_else(|| ws_endpoints.first().cloned().unwrap_or_default()),
+            ),
             block_time_ms: 2000,
             confirmation_blocks: 5,
             gas_price_multiplier: 1.2,
@@ -104,12 +135,20 @@ impl ChainConfig {
 
     /// Create config for Arbitrum
     pub fn arbitrum() -> Self {
+        let rpc_endpoints = env_csv_urls("ARBITRUM_MAINNET_RPC")
+            .unwrap_or_else(|| vec!["https://arbitrum.llamarpc.com".to_string()]);
+        let ws_endpoints = env_csv_urls("ARBITRUM_MAINNET_WSS")
+            .unwrap_or_else(|| vec!["wss://arbitrum.llamarpc.com".to_string()]);
+
         Self {
             chain_id: 42161,
             name: "Arbitrum".to_string(),
-            rpc_endpoints: vec!["https://arbitrum.llamarpc.com".to_string()],
-            ws_endpoints: vec!["wss://arbitrum.llamarpc.com".to_string()],
-            mempool_endpoint: Some("wss://mempool.arbitrum.llamarpc.com".to_string()),
+            rpc_endpoints,
+            ws_endpoints: ws_endpoints.clone(),
+            mempool_endpoint: Some(
+                env_first_url("ARBITRUM_MEMPOOL_WSS")
+                    .unwrap_or_else(|| ws_endpoints.first().cloned().unwrap_or_default()),
+            ),
             block_time_ms: 250,
             confirmation_blocks: 1,
             gas_price_multiplier: 1.1,
@@ -121,12 +160,20 @@ impl ChainConfig {
 
     /// Create config for Solana
     pub fn solana() -> Self {
+        let rpc_endpoints = env_csv_urls("SOLANA_MAINNET_HTTPS")
+            .unwrap_or_else(|| vec!["https://api.mainnet-beta.solana.com".to_string()]);
+        let ws_endpoints = env_csv_urls("SOLANA_MAINNET_WSS")
+            .unwrap_or_else(|| vec!["wss://api.mainnet-beta.solana.com".to_string()]);
+
         Self {
             chain_id: 1399811149, // Solana chain ID
             name: "Solana".to_string(),
-            rpc_endpoints: vec!["https://api.mainnet-beta.solana.com".to_string()],
-            ws_endpoints: vec!["wss://api.mainnet-beta.solana.com".to_string()],
-            mempool_endpoint: Some("wss://api.mainnet-beta.solana.com".to_string()),
+            rpc_endpoints,
+            ws_endpoints: ws_endpoints.clone(),
+            mempool_endpoint: Some(
+                env_first_url("SOLANA_MEMPOOL_WSS")
+                    .unwrap_or_else(|| ws_endpoints.first().cloned().unwrap_or_default()),
+            ),
             block_time_ms: 400,
             confirmation_blocks: 1,
             gas_price_multiplier: 1.0,
@@ -138,12 +185,20 @@ impl ChainConfig {
 
     /// Create config for Atlas Sphere L1
     pub fn atlas_sphere() -> Self {
+        let rpc_endpoints = env_csv_urls("ATLAS_SPHERE_RPC_HTTP")
+            .unwrap_or_else(|| vec!["https://rpc.atlas-sphere.io".to_string()]);
+        let ws_endpoints = env_csv_urls("ATLAS_SPHERE_RPC_WS")
+            .unwrap_or_else(|| vec!["wss://ws.atlas-sphere.io".to_string()]);
+
         Self {
             chain_id: 0x41544C53, // "ATLS" in hex
             name: "Atlas Sphere".to_string(),
-            rpc_endpoints: vec!["https://rpc.atlas-sphere.io".to_string()],
-            ws_endpoints: vec!["wss://ws.atlas-sphere.io".to_string()],
-            mempool_endpoint: Some("wss://mempool.atlas-sphere.io".to_string()),
+            rpc_endpoints,
+            ws_endpoints: ws_endpoints.clone(),
+            mempool_endpoint: Some(
+                env_first_url("ATLAS_SPHERE_MEMPOOL_WSS")
+                    .unwrap_or_else(|| ws_endpoints.first().cloned().unwrap_or_default()),
+            ),
             block_time_ms: 6000,
             confirmation_blocks: 1,
             gas_price_multiplier: 1.0,

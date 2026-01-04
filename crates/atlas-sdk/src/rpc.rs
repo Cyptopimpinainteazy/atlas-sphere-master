@@ -8,6 +8,9 @@ use crate::types::{AccountInfo, BlockHeader, ComitResult};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[cfg(feature = "std")]
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+
 // ============================================================================
 // JSON-RPC Types
 // ============================================================================
@@ -76,6 +79,121 @@ impl HttpRpcClient {
             client: reqwest::Client::new(),
             request_id: std::sync::Arc::new(AtomicU64::new(1)),
         }
+    }
+
+    /// Create a new HTTP RPC client with default headers.
+    ///
+    /// This is useful for managed RPC providers that require an API key in a header
+    /// (e.g. Tatum gateways require `x-api-key`).
+    #[cfg(feature = "std")]
+    pub fn with_default_headers(endpoint: impl Into<String>, headers: HeaderMap) -> Self {
+        let client = reqwest::Client::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
+        Self {
+            endpoint: endpoint.into(),
+            client,
+            request_id: std::sync::Arc::new(AtomicU64::new(1)),
+        }
+    }
+
+    /// Create a new HTTP RPC client that sends an API key in a custom header.
+    ///
+    /// This supports providers that authenticate via header (common for gateways).
+    #[cfg(feature = "std")]
+    pub fn with_api_key_header(
+        endpoint: impl Into<String>,
+        header_name: &str,
+        api_key: &str,
+    ) -> Self {
+        let mut headers = HeaderMap::new();
+
+        let name = HeaderName::from_bytes(header_name.as_bytes())
+            .unwrap_or_else(|_| HeaderName::from_static("x-api-key"));
+        let value = HeaderValue::from_str(api_key).unwrap_or_else(|_| HeaderValue::from_static(""));
+
+        headers.insert(name, value);
+        Self::with_default_headers(endpoint, headers)
+    }
+
+    /// Create a new HTTP RPC client for a Tatum gateway endpoint.
+    ///
+    /// Tatum endpoints typically require an `x-api-key` header.
+    #[cfg(feature = "std")]
+    pub fn with_tatum_api_key(endpoint: impl Into<String>, api_key: &str) -> Self {
+        Self::with_api_key_header(endpoint, "x-api-key", api_key)
+    }
+
+    /// Create a new HTTP RPC client from environment variables.
+    ///
+    /// Returns `None` if the endpoint env var is not set.
+    #[cfg(feature = "std")]
+    pub fn from_env(endpoint_env: &str, api_key_env: Option<&str>) -> Option<Self> {
+        let endpoint = std::env::var(endpoint_env).ok()?;
+
+        match api_key_env.and_then(|k| std::env::var(k).ok()) {
+            Some(api_key) if !api_key.is_empty() => Some(Self::with_tatum_api_key(endpoint, &api_key)),
+            _ => Some(Self::new(endpoint)),
+        }
+    }
+
+    /// Create a new HTTP RPC client from environment variables, with configurable API key header.
+    ///
+    /// If the API key env var is set and non-empty, it will be sent under:
+    /// - the header specified by `api_key_header_env` (if set), else
+    /// - `x-api-key`.
+    #[cfg(feature = "std")]
+    pub fn from_env_with_api_key_header(
+        endpoint_env: &str,
+        api_key_env: Option<&str>,
+        api_key_header_env: Option<&str>,
+    ) -> Option<Self> {
+        let endpoint = std::env::var(endpoint_env).ok()?;
+
+        let api_key = api_key_env.and_then(|k| std::env::var(k).ok());
+        let header_name = api_key_header_env
+            .and_then(|k| std::env::var(k).ok())
+            .filter(|v| !v.trim().is_empty())
+            .unwrap_or_else(|| "x-api-key".to_string());
+
+        match api_key {
+            Some(api_key) if !api_key.is_empty() => {
+                Some(Self::with_api_key_header(endpoint, header_name.trim(), &api_key))
+            }
+            _ => Some(Self::new(endpoint)),
+        }
+    }
+
+    /// Load multiple HTTP RPC clients from a comma-separated list of URLs in an env var.
+    ///
+    /// This is useful for failover/rotation across providers.
+    #[cfg(feature = "std")]
+    pub fn clients_from_env_urls(
+        urls_env: &str,
+        api_key_env: Option<&str>,
+        api_key_header_env: Option<&str>,
+    ) -> Vec<Self> {
+        let urls = match std::env::var(urls_env) {
+            Ok(v) => v,
+            Err(_) => return Vec::new(),
+        };
+
+        let api_key = api_key_env.and_then(|k| std::env::var(k).ok());
+        let header_name = api_key_header_env
+            .and_then(|k| std::env::var(k).ok())
+            .filter(|v| !v.trim().is_empty())
+            .unwrap_or_else(|| "x-api-key".to_string());
+
+        urls.split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|endpoint| match api_key.as_deref() {
+                Some(key) if !key.is_empty() => Self::with_api_key_header(endpoint.to_string(), header_name.trim(), key),
+                _ => Self::new(endpoint.to_string()),
+            })
+            .collect()
     }
 
     /// Create with custom reqwest client.
