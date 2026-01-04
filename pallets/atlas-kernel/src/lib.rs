@@ -120,7 +120,7 @@ pub struct ComitV2<AccountId, Balance> {
 }
 
 /// Re-export ExecutionReceipt, ExecutionLog, and StateChange from adapters module.
-pub use adapters::{ExecutionReceipt, ExecutionLog, StateChange};
+pub use adapters::{ExecutionLog, ExecutionReceipt, StateChange};
 
 /// Unified state representation for the Atlas Sphere.
 #[derive(Clone, PartialEq, Eq, Encode, Decode, RuntimeDebug, TypeInfo, Default)]
@@ -430,10 +430,11 @@ pub mod pallet {
     /// Type alias for `ComitV2` parameterized by the pallet's generic types.
     pub type ComitV2Of<T> = ComitV2<<T as frame_system::Config>::AccountId, <T as Config>::Balance>;
 
-    pub type ValidatorInfo<T> = super::ValidatorInfo<<T as frame_system::Config>::AccountId, Vec<u8>>;
+    pub type ValidatorInfo<T> =
+        super::ValidatorInfo<<T as frame_system::Config>::AccountId, Vec<u8>>;
 
-    pub type ProposalDetails<T> = super::ProposalDetails<<T as frame_system::Config>::AccountId, Vec<u8>>;
-
+    pub type ProposalDetails<T> =
+        super::ProposalDetails<<T as frame_system::Config>::AccountId, Vec<u8>>;
 
     type AssetSymbolOf<T> = BoundedVec<u8, <T as Config>::MaxAssetSymbolLength>;
     type AssetMetadataOf<T> = AssetMetadata<AssetSymbolOf<T>>;
@@ -518,12 +519,12 @@ pub mod pallet {
         Blake2_128Concat,
         u64, // HTLC ID
         (
-            T::AccountId,     // initiator
-            T::AccountId,     // recipient
-            sp_core::H256,    // secret_hash (SHA-256)
-            T::Balance,       // amount
+            T::AccountId,      // initiator
+            T::AccountId,      // recipient
+            sp_core::H256,     // secret_hash (SHA-256)
+            T::Balance,        // amount
             BlockNumberFor<T>, // timelock (block number)
-            u32,              // status (0=locked, 1=claimed, 2=refunded, 3=expired)
+            u32,               // status (0=locked, 1=claimed, 2=refunded, 3=expired)
             BlockNumberFor<T>, // created_at
         ),
         OptionQuery,
@@ -541,12 +542,12 @@ pub mod pallet {
         Blake2_128Concat,
         u64, // HTLC ID
         (
-            u32,                                               // from_chain_id
-            u32,                                               // to_chain_id
+            u32,                                                  // from_chain_id
+            u32,                                                  // to_chain_id
             BoundedVec<u8, <T as Config>::MaxHtlcPreimageLength>, // preimage secret
-            T::AccountId,                                      // recipient on target chain
-            u128,                                              // amount
-            u32,                                               // block when proof was recorded
+            T::AccountId,                                         // recipient on target chain
+            u128,                                                 // amount
+            u32,                                                  // block when proof was recorded
         ),
         OptionQuery,
     >;
@@ -555,13 +556,8 @@ pub mod pallet {
     /// Key: AccountId, Value: ValidatorInfo
     #[pallet::storage]
     #[pallet::unbounded]
-    pub type ValidatorRegistry<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        ValidatorInfo<T>,
-        OptionQuery,
-    >;
+    pub type ValidatorRegistry<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, ValidatorInfo<T>, OptionQuery>;
 
     /// Validator Count: Total number of registered validators
     #[pallet::storage]
@@ -571,13 +567,8 @@ pub mod pallet {
     /// Key: ProposalId (u32), Value: ProposalDetails
     #[pallet::storage]
     #[pallet::unbounded]
-    pub type ProposalRegistry<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        u32,
-        ProposalDetails<T>,
-        OptionQuery,
-    >;
+    pub type ProposalRegistry<T: Config> =
+        StorageMap<_, Blake2_128Concat, u32, ProposalDetails<T>, OptionQuery>;
 
     /// Proposal Counter: Global counter for generating unique proposal IDs
     #[pallet::storage]
@@ -688,21 +679,13 @@ pub mod pallet {
             signature_count: u32,
         },
         /// The system was paused via multi-sig proposal
-        SystemPaused {
-            initiated_by: T::AccountId,
-        },
+        SystemPaused { initiated_by: T::AccountId },
         /// The system was resumed via multi-sig proposal
-        SystemResumed {
-            initiated_by: T::AccountId,
-        },
+        SystemResumed { initiated_by: T::AccountId },
         /// The system was stopped via multi-sig proposal
-        SystemStopped {
-            initiated_by: T::AccountId,
-        },
+        SystemStopped { initiated_by: T::AccountId },
         /// The coordinator was updated via multi-sig proposal
-        CoordinatorUpdated {
-            initiated_by: T::AccountId,
-        },
+        CoordinatorUpdated { initiated_by: T::AccountId },
     }
 
     #[pallet::error]
@@ -1604,10 +1587,7 @@ pub mod pallet {
         /// Can be called by any validator
         #[pallet::call_index(11)]
         #[pallet::weight(<T as Config>::WeightInfo::create_proposal())]
-        pub fn create_proposal(
-            origin: OriginFor<T>,
-            action: ControlAction,
-        ) -> DispatchResult {
+        pub fn create_proposal(origin: OriginFor<T>, action: ControlAction) -> DispatchResult {
             let who = ensure_signed(origin)?;
 
             let action_for_event = action.clone();
@@ -1661,8 +1641,8 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
 
             // Check if proposal exists
-            let mut proposal = ProposalRegistry::<T>::get(proposal_id)
-                .ok_or(Error::<T>::AuthorityNotFound)?;
+            let mut proposal =
+                ProposalRegistry::<T>::get(proposal_id).ok_or(Error::<T>::AuthorityNotFound)?;
 
             // Check if caller is a registered validator
             ensure!(
@@ -1721,9 +1701,11 @@ pub mod pallet {
                 ControlAction::Stop => Self::deposit_event(Event::SystemStopped {
                     initiated_by: proposal.created_by.clone(),
                 }),
-                ControlAction::UpdateCoordinator => Self::deposit_event(Event::CoordinatorUpdated {
-                    initiated_by: proposal.created_by.clone(),
-                }),
+                ControlAction::UpdateCoordinator => {
+                    Self::deposit_event(Event::CoordinatorUpdated {
+                        initiated_by: proposal.created_by.clone(),
+                    })
+                }
             }
 
             Ok(())
@@ -2565,5 +2547,5 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-mod chaos_tests;
+// #[cfg(test)]
+// mod chaos_tests; // TODO: File missing, commented out to fix compilation
