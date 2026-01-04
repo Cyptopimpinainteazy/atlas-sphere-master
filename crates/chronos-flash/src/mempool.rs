@@ -29,7 +29,7 @@ impl MempoolScanner {
     /// Create new mempool scanner
     pub fn new(config: ChronosConfig, intent_tx: mpsc::Sender<SwapIntent>) -> Self {
         let mut chains = HashMap::new();
-        
+
         for (chain_id, chain_config) in config.chains.iter() {
             if chain_config.enabled {
                 chains.insert(*chain_id, ChainScanner::new(chain_config.clone()));
@@ -88,12 +88,10 @@ impl MempoolScanner {
                 drop(stats);
 
                 for tx in pending_txs {
-                    if let Some(intent) = self.intent_detector.detect(
-                        chain_id,
-                        &tx.data,
-                        tx.sender,
-                        tx.gas_price,
-                    ) {
+                    if let Some(intent) =
+                        self.intent_detector
+                            .detect(chain_id, &tx.data, tx.sender, tx.gas_price)
+                    {
                         let mut stats = self.stats.write().await;
                         stats.swap_intents_detected += 1;
                         drop(stats);
@@ -129,7 +127,8 @@ impl MempoolScanner {
 
     /// Add a new chain to monitor
     pub fn add_chain(&mut self, config: ChainConfig) {
-        self.chains.insert(config.chain_id, ChainScanner::new(config));
+        self.chains
+            .insert(config.chain_id, ChainScanner::new(config));
     }
 
     /// Remove a chain from monitoring
@@ -184,7 +183,7 @@ impl ChainScanner {
 
         // Connect to chain RPC
         let pending = self.fetch_pending_transactions().await?;
-        
+
         // Filter new transactions
         let mut new_txs = vec![];
         for tx in pending {
@@ -259,7 +258,6 @@ impl ChainScanner {
         });
     }
 
-
     fn drain_pending_rx(&mut self, max: usize) {
         self.ensure_stream_started();
 
@@ -323,8 +321,7 @@ impl ChainScanner {
         if !status.is_success() {
             return Err(ChronosError::Network(format!(
                 "RPC HTTP {} from {}",
-                status,
-                endpoint
+                status, endpoint
             )));
         }
 
@@ -346,7 +343,9 @@ impl ChainScanner {
 
         if self.config.rpc_endpoints.is_empty() {
             self.is_connected = false;
-            return Err(ChronosError::InvalidConfig("Missing rpc_endpoints".to_string()));
+            return Err(ChronosError::InvalidConfig(
+                "Missing rpc_endpoints".to_string(),
+            ));
         }
 
         // Heuristic: treat Solana specially by chain_id/name.
@@ -365,7 +364,10 @@ impl ChainScanner {
             let endpoint = &self.config.rpc_endpoints[idx];
 
             let attempt: ChronosResult<()> = if is_solana {
-                match self.rpc_call(endpoint, "getSlot", serde_json::json!([])).await {
+                match self
+                    .rpc_call(endpoint, "getSlot", serde_json::json!([]))
+                    .await
+                {
                     Ok(v) => {
                         let slot = v.as_u64().ok_or_else(|| {
                             ChronosError::Network("Solana getSlot returned non-u64".to_string())
@@ -382,9 +384,7 @@ impl ChainScanner {
                 {
                     Ok(v) => {
                         let hex_block = v.as_str().map(|s| s.to_string()).ok_or_else(|| {
-                            ChronosError::Network(
-                                "eth_blockNumber returned non-string".to_string(),
-                            )
+                            ChronosError::Network("eth_blockNumber returned non-string".to_string())
                         })?;
                         let parsed = u64::from_str_radix(hex_block.trim_start_matches("0x"), 16)
                             .map_err(|e| {
@@ -417,10 +417,7 @@ impl ChainScanner {
                     return Ok(());
                 }
                 Err(e) => {
-                    if let ChronosError::RateLimited {
-                        retry_after_ms, ..
-                    } = e
-                    {
+                    if let ChronosError::RateLimited { retry_after_ms, .. } = e {
                         rate_limited += 1;
                         max_retry_after_ms = max_retry_after_ms.max(retry_after_ms);
                     }
@@ -449,15 +446,17 @@ impl ChainScanner {
         }
 
         self.is_connected = false;
-        Err(last_err.unwrap_or_else(|| ChronosError::Network("All RPC endpoints failed".to_string())))
+        Err(last_err
+            .unwrap_or_else(|| ChronosError::Network("All RPC endpoints failed".to_string())))
     }
 
     /// Remove stale transactions
     fn cleanup_stale_txs(&mut self) {
         let now = chrono::Utc::now().timestamp_millis() as u64;
         let max_age = 60_000; // 60 seconds
-        
-        self.pending_txs.retain(|_, tx| now - tx.detected_at < max_age);
+
+        self.pending_txs
+            .retain(|_, tx| now - tx.detected_at < max_age);
     }
 
     /// Get chain status
@@ -589,7 +588,14 @@ async fn evm_pending_filter_task(
             for attempt in 0..n {
                 let idx = (http_idx + attempt) % n;
                 let endpoint = &http_endpoints[idx];
-                match evm_rpc_call(&http, endpoint, "eth_newPendingTransactionFilter", serde_json::json!([])).await {
+                match evm_rpc_call(
+                    &http,
+                    endpoint,
+                    "eth_newPendingTransactionFilter",
+                    serde_json::json!([]),
+                )
+                .await
+                {
                     Ok(v) => {
                         if let Some(fid) = v.as_str().map(|s| s.to_string()) {
                             created = Some(fid);
@@ -613,7 +619,14 @@ async fn evm_pending_filter_task(
         for attempt in 0..n {
             let idx = (http_idx + attempt) % n;
             let endpoint = &http_endpoints[idx];
-            match evm_rpc_call(&http, endpoint, "eth_getFilterChanges", serde_json::json!([fid.clone()])).await {
+            match evm_rpc_call(
+                &http,
+                endpoint,
+                "eth_getFilterChanges",
+                serde_json::json!([fid.clone()]),
+            )
+            .await
+            {
                 Ok(v) => {
                     changes = Some(v);
                     http_idx = idx;
@@ -656,8 +669,13 @@ async fn evm_pending_filter_task(
             for attempt in 0..n {
                 let idx = (http_idx + attempt) % n;
                 let endpoint = &http_endpoints[idx];
-                match evm_rpc_call(&http, endpoint, "eth_getTransactionByHash", serde_json::json!([tx_hash.clone()]))
-                    .await
+                match evm_rpc_call(
+                    &http,
+                    endpoint,
+                    "eth_getTransactionByHash",
+                    serde_json::json!([tx_hash.clone()]),
+                )
+                .await
                 {
                     Ok(v) => {
                         if v.is_null() {
@@ -680,7 +698,11 @@ async fn evm_pending_filter_task(
                 Some(h) => h,
                 None => continue,
             };
-            let sender = match txv.get("from").and_then(|x| x.as_str()).and_then(evm_addr_to_32) {
+            let sender = match txv
+                .get("from")
+                .and_then(|x| x.as_str())
+                .and_then(evm_addr_to_32)
+            {
                 Some(a) => a,
                 None => continue,
             };
@@ -758,8 +780,9 @@ async fn evm_pending_stream_task(
         .filter(|&v| v > 0)
         .unwrap_or(20);
 
-    let url = url::Url::parse(&ws_endpoint)
-        .map_err(|e| ChronosError::InvalidConfig(format!("Invalid WS endpoint '{}': {}", ws_endpoint, e)))?;
+    let url = url::Url::parse(&ws_endpoint).map_err(|e| {
+        ChronosError::InvalidConfig(format!("Invalid WS endpoint '{}': {}", ws_endpoint, e))
+    })?;
 
     let (mut ws, _) = tokio_tungstenite::connect_async(url)
         .await
@@ -838,8 +861,13 @@ async fn evm_pending_stream_task(
         for attempt in 0..n {
             let idx = (http_idx + attempt) % n;
             let endpoint = &http_endpoints[idx];
-            match evm_rpc_call(&http, endpoint, "eth_getTransactionByHash", serde_json::json!([tx_hash]))
-                .await
+            match evm_rpc_call(
+                &http,
+                endpoint,
+                "eth_getTransactionByHash",
+                serde_json::json!([tx_hash]),
+            )
+            .await
             {
                 Ok(v) => {
                     if v.is_null() {
@@ -862,7 +890,11 @@ async fn evm_pending_stream_task(
             Some(h) => h,
             None => continue,
         };
-        let sender = match txv.get("from").and_then(|x| x.as_str()).and_then(evm_addr_to_32) {
+        let sender = match txv
+            .get("from")
+            .and_then(|x| x.as_str())
+            .and_then(evm_addr_to_32)
+        {
             Some(a) => a,
             None => continue,
         };
@@ -966,7 +998,7 @@ impl MempoolStream {
         // - Connect to bloxroute/flashbots mempool stream
         // - Subscribe to pending transactions
         // - Filter by DEX router addresses
-        
+
         self.is_connected = true;
         Ok(())
     }
@@ -974,18 +1006,18 @@ impl MempoolStream {
     /// Subscribe to pending transactions
     pub async fn subscribe(&mut self) -> ChronosResult<mpsc::Receiver<PendingTx>> {
         let (_tx, rx) = mpsc::channel(10000);
-        
+
         // Spawn background task to receive transactions
         let _endpoint = self.endpoint.clone();
         let _chain_id = self.chain_id;
-        
+
         tokio::spawn(async move {
             // WebSocket connection and subscription logic
             // eth_subscribe("newPendingTransactions")
             loop {
                 // Receive and forward pending txs
                 tokio::time::sleep(Duration::from_millis(10)).await;
-                
+
                 // In production: receive from WebSocket and send to channel
             }
         });
@@ -1015,7 +1047,7 @@ impl BloxrouteMempoolStream {
         // - 100ms+ faster mempool data
         // - Cross-chain mempool aggregation
         // - Transaction simulation
-        
+
         self.is_connected = true;
         Ok(())
     }
@@ -1042,7 +1074,7 @@ impl FlashbotsMempoolStream {
         // - Private transaction hints (searcher bundle tips)
         // - Block builder preferences
         // - MEV-share orderflow
-        
+
         self.is_connected = true;
         Ok(())
     }

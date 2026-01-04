@@ -14,7 +14,11 @@ fn env_csv_urls(var: &str) -> Option<Vec<String>> {
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .collect();
-    if urls.is_empty() { None } else { Some(urls) }
+    if urls.is_empty() {
+        None
+    } else {
+        Some(urls)
+    }
 }
 
 fn env_first_url(var: &str) -> Option<String> {

@@ -136,6 +136,8 @@ pub struct ChainStatus {
     pub pending_txs: usize,
     pub avg_block_time_ms: u64,
     pub last_updated: Timestamp,
+    pub backoff_until_ms: Timestamp,
+    pub backoff_ms: u64,
 }
 
 /// Mempool statistics

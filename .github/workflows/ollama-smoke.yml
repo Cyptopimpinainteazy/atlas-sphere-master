@@ -1,0 +1,71 @@
+name: Ollama Smoke Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *' # daily at 06:00 UTC
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    env:
+      OLLAMA_HOST: ${{ secrets.OLLAMA_HOST }}
+      OLLAMA_MODEL: ${{ secrets.OLLAMA_MODEL || 'qwen2.5-coder:14b-instruct-q4_0' }}
+      LLM_ANNOTATE: ${{ secrets.LLM_ANNOTATE || 'false' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Ollama Smoke Script
+        run: |
+          if [ -z "$OLLAMA_HOST" ]; then
+            echo "OLLAMA_HOST not configured; skipping smoke test";
+            exit 0;
+          fi
+          bash ./tools/ollama/smoke.sh
+
+      - name: Generate MD from prompt
+        env:
+          OLLAMA_HOST: ${{ env.OLLAMA_HOST }}
+          OLLAMA_MODEL: ${{ env.OLLAMA_MODEL }}
+        run: |
+          chmod +x ./tools/ollama/generate_md.sh || true
+          mkdir -p docs || true
+          # Use example prompt; replace or override prompt file in more advanced workflows
+          ./tools/ollama/generate_md.sh -p tools/ollama/prompts/example_prompt.txt -o docs/ollama-summary.md -m "$OLLAMA_MODEL" -h "$OLLAMA_HOST"
+
+      - name: Upload LLM output artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-output
+          path: docs/ollama-summary.md
+
+      - name: Annotate PR with LLM output
+        if: github.event_name == 'pull_request' && env.LLM_ANNOTATE == 'true'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'docs/ollama-summary.md';
+            if (!fs.existsSync(path)) {
+              core.info(`LLM output not found at ${path}, skipping comment.`);
+              return;
+            }
+            const content = fs.readFileSync(path, 'utf8');
+            const pr = context.payload.pull_request;
+            if (!pr) {
+              core.info('No PR context found; skipping annotation.');
+              return;
+            }
+            const pr_number = pr.number;
+            const body = `### 🤖 LLM Audit Output\n\n${content}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr_number,
+              body
+            });
