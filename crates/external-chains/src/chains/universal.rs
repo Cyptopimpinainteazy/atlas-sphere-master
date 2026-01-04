@@ -22,7 +22,7 @@ impl UniversalEvmAdapter {
         let info = get_chain(chain_id)?;
         let config = ChainConfig {
             chain_type: chain_id,
-            rpc_url: info.rpc.as_bytes().to_vec(),
+            rpc_url: ChainConfig::resolve_rpc_url_bytes(chain_id, info.rpc),
             ws_url: None,
             bridge_contract: Self::default_bridge(chain_id),
             settlement_contract: Self::default_bridge(chain_id),
@@ -37,7 +37,7 @@ impl UniversalEvmAdapter {
     pub fn from_info(info: &'static ChainInfo) -> Self {
         let config = ChainConfig {
             chain_type: info.chain_id,
-            rpc_url: info.rpc.as_bytes().to_vec(),
+            rpc_url: ChainConfig::resolve_rpc_url_bytes(info.chain_id, info.rpc),
             ws_url: None,
             bridge_contract: Self::default_bridge(info.chain_id),
             settlement_contract: Self::default_bridge(info.chain_id),

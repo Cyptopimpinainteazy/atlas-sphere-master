@@ -11,7 +11,7 @@ use sp_std::vec::Vec;
 /// Avalanche C-Chain adapter
 pub struct AvalancheAdapter {
     config: ChainConfig,
-    #[allow(dead_code)]
+    /// Transaction nonce tracking (TODO: implement nonce management)
     nonce: u64,
 }
 

@@ -357,10 +357,7 @@ pub trait HtlcHostcall<AccountId, Balance, BlockNumber> {
     fn htlc_status(&self, htlc_id: HtlcId) -> Option<HtlcStatus>;
 
     /// Get HTLC details (for verification)
-    fn htlc_get(
-        &self,
-        htlc_id: HtlcId,
-    ) -> Option<HtlcState<AccountId, Balance, BlockNumber>>;
+    fn htlc_get(&self, htlc_id: HtlcId) -> Option<HtlcState<AccountId, Balance, BlockNumber>>;
 }
 
 /// HTLC Create Error
@@ -411,7 +408,7 @@ mod tests {
     #[test]
     fn test_proof_verification() {
         use sha2::{Digest, Sha256};
-        
+
         let preimage = b"test_secret".to_vec();
         let mut hasher = Sha256::new();
         hasher.update(&preimage);

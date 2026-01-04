@@ -15,7 +15,7 @@ The GPU Swarm provides a decentralized network of GPU compute nodes that can exe
 
 ## Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Coordinator                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────────┐ │
@@ -48,6 +48,19 @@ The GPU Swarm provides a decentralized network of GPU compute nodes that can exe
 - **Reputation System**: Track node reliability and performance
 - **Economics**: Token rewards for compute provision
 - **P2P Networking**: Decentralized peer discovery and communication
+
+## Node Identity & PKI
+
+GPU nodes are identified by a `NodeId` (32 bytes) and can optionally register a public key for
+signature verification (Phase 1). The in-memory PKI registry lives in
+`src/node_pki.rs`.
+
+Accepted public key encodings:
+
+- **ed25519** public key (32 bytes)
+- **secp256k1** public key
+    - Compressed (33 bytes): `0x02|0x03 + 32 bytes`
+    - Uncompressed (65 bytes): `0x04 + 64 bytes`
 
 ## Quick Start
 
@@ -188,7 +201,7 @@ cargo test -p gpu-swarm
 
 ### Module Structure
 
-```
+```text
 crates/gpu-swarm/
 ├── src/
 │   ├── lib.rs           # Crate entry point

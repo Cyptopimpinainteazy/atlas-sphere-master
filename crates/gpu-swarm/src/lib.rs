@@ -124,6 +124,7 @@ pub use network::{NetworkConfig, NetworkEvent, NetworkManager, PeerId};
 pub use node::{
     GpuBackend, GpuCapabilities, NodeId, NodeMetrics, NodeRegistry, NodeStatus, SwarmNode,
 };
+pub use node_pki::{NodePKIRegistry, NodePublicKey};
 pub use protocol::{ExecutionProof, MessageEnvelope, SwarmMessage, TaskAssignment, TaskResult};
 pub use scheduler::{SchedulerConfig, SchedulerStats, SchedulingStrategy, TaskScheduler};
 pub use task::{Task, TaskExecution, TaskId, TaskMetadata, TaskPriority, TaskStatus, TaskType};

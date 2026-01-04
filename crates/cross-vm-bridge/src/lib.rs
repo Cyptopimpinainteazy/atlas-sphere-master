@@ -1,18 +1,17 @@
+use sp_runtime::DispatchError;
 /// Cross-VM Bridge for Atomic EVM ↔ SVM Operations with X3 Language Integration
 ///
 /// Enables atomic transactions that span both virtual machines with guaranteed consistency.
 /// Integrates X3 language for cross-chain smart contract execution and MEV computation.
-
 use sp_std::vec::Vec;
-use sp_runtime::DispatchError;
 
 // X3 Language imports for cross-chain smart contracts (conditionally compiled)
 #[cfg(feature = "x3-support")]
-use x3_vm::{VM, Verifier, VerifyOptions, VMConfig};
+use x3_ast::ast::*;
 #[cfg(feature = "x3-support")]
 use x3_common::{Literal, Span};
 #[cfg(feature = "x3-support")]
-use x3_ast::ast::*;
+use x3_vm::{VMConfig, Verifier, VerifyOptions, VM};
 
 /// Cross-VM operation types
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -150,7 +149,9 @@ impl CrossVmBridge {
                 }
                 // Validate EVM address format (should be 20 bytes)
                 if destination.len() != 20 {
-                    return Err(DispatchError::Other("Invalid EVM destination address length"));
+                    return Err(DispatchError::Other(
+                        "Invalid EVM destination address length",
+                    ));
                 }
                 Ok(())
             }
@@ -169,7 +170,9 @@ impl CrossVmBridge {
                 }
                 // Validate SVM address format (should be 32 bytes)
                 if destination.len() != 32 {
-                    return Err(DispatchError::Other("Invalid SVM destination address length"));
+                    return Err(DispatchError::Other(
+                        "Invalid SVM destination address length",
+                    ));
                 }
                 Ok(())
             }
@@ -233,7 +236,8 @@ impl CrossVmBridge {
         let mut failed_updates: Vec<(CrossVmOperation, Vec<u8>)> = Vec::new();
 
         // Collect operations to process
-        let ops_to_process: Vec<(usize, CrossVmOperation)> = self.pending_ops
+        let ops_to_process: Vec<(usize, CrossVmOperation)> = self
+            .pending_ops
             .iter()
             .enumerate()
             .filter_map(|(idx, (op, state))| {
@@ -280,7 +284,8 @@ impl CrossVmBridge {
         }
 
         // Clean up executed operations
-        self.pending_ops.retain(|(_, state)| matches!(state, OperationState::Pending));
+        self.pending_ops
+            .retain(|(_, state)| matches!(state, OperationState::Pending));
 
         Ok(results)
     }
@@ -289,7 +294,10 @@ impl CrossVmBridge {
     ///
     /// This method orchestrates cross-VM execution and persists results to the canonical ledger.
     /// State changes are only recorded after BOTH VMs complete successfully (atomic semantics).
-    fn execute_operation(&self, operation: &CrossVmOperation) -> Result<CrossVmResult, DispatchError> {
+    fn execute_operation(
+        &self,
+        operation: &CrossVmOperation,
+    ) -> Result<CrossVmResult, DispatchError> {
         match operation {
             CrossVmOperation::TransferToEvm {
                 source,
@@ -303,10 +311,20 @@ impl CrossVmBridge {
                 // Return result with state changes that should be applied atomically
                 let mut output: Vec<u8> = Vec::new();
                 output.extend_from_slice(
-                    format!("SVM:withdraw:{}:{}", String::from_utf8_lossy(source), amount).as_bytes()
+                    format!(
+                        "SVM:withdraw:{}:{}",
+                        String::from_utf8_lossy(source),
+                        amount
+                    )
+                    .as_bytes(),
                 );
                 output.extend_from_slice(
-                    format!("EVM:deposit:{}:{}", String::from_utf8_lossy(destination), amount).as_bytes()
+                    format!(
+                        "EVM:deposit:{}:{}",
+                        String::from_utf8_lossy(destination),
+                        amount
+                    )
+                    .as_bytes(),
                 );
 
                 Ok(CrossVmResult::success(output, 25_000))
@@ -322,10 +340,20 @@ impl CrossVmBridge {
 
                 let mut output: Vec<u8> = Vec::new();
                 output.extend_from_slice(
-                    format!("EVM:withdraw:{}:{}", String::from_utf8_lossy(source), amount).as_bytes()
+                    format!(
+                        "EVM:withdraw:{}:{}",
+                        String::from_utf8_lossy(source),
+                        amount
+                    )
+                    .as_bytes(),
                 );
                 output.extend_from_slice(
-                    format!("SVM:deposit:{}:{}", String::from_utf8_lossy(destination), amount).as_bytes()
+                    format!(
+                        "SVM:deposit:{}:{}",
+                        String::from_utf8_lossy(destination),
+                        amount
+                    )
+                    .as_bytes(),
                 );
 
                 Ok(CrossVmResult::success(output, 25_000))
@@ -369,16 +397,36 @@ impl CrossVmBridge {
 
                 let mut output: Vec<u8> = Vec::new();
                 output.extend_from_slice(
-                    format!("EVM:withdraw:{}:{}", String::from_utf8_lossy(evm_party), evm_amount).as_bytes()
+                    format!(
+                        "EVM:withdraw:{}:{}",
+                        String::from_utf8_lossy(evm_party),
+                        evm_amount
+                    )
+                    .as_bytes(),
                 );
                 output.extend_from_slice(
-                    format!("SVM:deposit:{}:{}", String::from_utf8_lossy(svm_party), svm_amount).as_bytes()
+                    format!(
+                        "SVM:deposit:{}:{}",
+                        String::from_utf8_lossy(svm_party),
+                        svm_amount
+                    )
+                    .as_bytes(),
                 );
                 output.extend_from_slice(
-                    format!("SVM:withdraw:{}:{}", String::from_utf8_lossy(svm_party), svm_amount).as_bytes()
+                    format!(
+                        "SVM:withdraw:{}:{}",
+                        String::from_utf8_lossy(svm_party),
+                        svm_amount
+                    )
+                    .as_bytes(),
                 );
                 output.extend_from_slice(
-                    format!("EVM:deposit:{}:{}", String::from_utf8_lossy(evm_party), evm_amount).as_bytes()
+                    format!(
+                        "EVM:deposit:{}:{}",
+                        String::from_utf8_lossy(evm_party),
+                        evm_amount
+                    )
+                    .as_bytes(),
                 );
 
                 Ok(CrossVmResult::success(output, 200_000))
@@ -402,7 +450,10 @@ impl CrossVmBridge {
 
     /// Get pending operations count
     pub fn pending_count(&self) -> usize {
-        self.pending_ops.iter().filter(|(_, s)| matches!(s, OperationState::Pending)).count()
+        self.pending_ops
+            .iter()
+            .filter(|(_, s)| matches!(s, OperationState::Pending))
+            .count()
     }
 
     /// Get completed operations count
@@ -447,7 +498,8 @@ impl CrossVmBridge {
         // For now, we simulate the execution with the provided inputs
 
         // Execute the contract with cross-chain context
-        let execution_result = self.execute_x3_with_cross_chain_context(&mut vm, contract_code, inputs);
+        let execution_result =
+            self.execute_x3_with_cross_chain_context(&mut vm, contract_code, inputs);
 
         match execution_result {
             Ok(output) => {
@@ -459,9 +511,9 @@ impl CrossVmBridge {
                     Err(DispatchError::Other("X3 contract verification failed"))
                 }
             }
-            Err(e) => {
-                Err(DispatchError::Other(format!("X3 execution failed: {:?}", e).as_str()))
-            }
+            Err(e) => Err(DispatchError::Other(
+                format!("X3 execution failed: {:?}", e).as_str(),
+            )),
         }
     }
 
@@ -528,7 +580,9 @@ impl CrossVmBridge {
         // Inputs should contain: source_chain, destination_chain, amount, asset
 
         if inputs.len() < 4 {
-            return Err(DispatchError::Other("Insufficient inputs for cross-chain transfer"));
+            return Err(DispatchError::Other(
+                "Insufficient inputs for cross-chain transfer",
+            ));
         }
 
         // Simulate X3 VM execution
@@ -555,7 +609,9 @@ impl CrossVmBridge {
         // Inputs should contain: arbitrage_type, assets, amounts, chains
 
         if inputs.len() < 4 {
-            return Err(DispatchError::Other("Insufficient inputs for MEV arbitrage"));
+            return Err(DispatchError::Other(
+                "Insufficient inputs for MEV arbitrage",
+            ));
         }
 
         // Simulate X3 VM execution with MEV computation
@@ -598,7 +654,7 @@ impl CrossVmBridge {
                 Ok(CrossVmOperation::AtomicSwap {
                     evm_party: self.bytes_to_evm_address(&evm_party)?,
                     svm_party: svm_party,
-                    evm_asset: [0u8; 20], // Default asset for now
+                    evm_asset: [0u8; 20],     // Default asset for now
                     svm_asset: vec![0u8; 32], // Default asset for now
                     evm_amount,
                     svm_amount,
@@ -606,13 +662,15 @@ impl CrossVmBridge {
             }
             "cross_chain_transfer" => {
                 if inputs.len() < 4 {
-                    return Err(DispatchError::Other("Cross-chain transfer requires 4 inputs"));
+                    return Err(DispatchError::Other(
+                        "Cross-chain transfer requires 4 inputs",
+                    ));
                 }
 
                 // For now, we'll create a basic transfer operation
                 // In a full implementation, this would parse the transfer details
                 Ok(CrossVmOperation::TransferToEvm {
-                    source: vec![1u8; 32], // Placeholder SVM address
+                    source: vec![1u8; 32],  // Placeholder SVM address
                     destination: [0u8; 20], // Placeholder EVM address
                     amount: self.literal_to_u128(&inputs[2])?,
                 })
@@ -626,7 +684,9 @@ impl CrossVmBridge {
         match literal {
             Literal::String(s) => Ok(s.as_bytes().to_vec()),
             Literal::Integer(i) => Ok(i.to_le_bytes().to_vec()),
-            _ => Err(DispatchError::Other("Unsupported literal type for bytes conversion")),
+            _ => Err(DispatchError::Other(
+                "Unsupported literal type for bytes conversion",
+            )),
         }
     }
 
@@ -634,8 +694,12 @@ impl CrossVmBridge {
     fn literal_to_u128(&self, literal: &Literal) -> Result<u128, DispatchError> {
         match literal {
             Literal::Integer(i) => Ok(*i as u128),
-            Literal::String(s) => s.parse::<u128>().map_err(|_| DispatchError::Other("Invalid u128 string")),
-            _ => Err(DispatchError::Other("Unsupported literal type for u128 conversion")),
+            Literal::String(s) => s
+                .parse::<u128>()
+                .map_err(|_| DispatchError::Other("Invalid u128 string")),
+            _ => Err(DispatchError::Other(
+                "Unsupported literal type for u128 conversion",
+            )),
         }
     }
 
@@ -660,8 +724,8 @@ mod tests {
         let mut bridge = CrossVmBridge::new();
 
         let op = CrossVmOperation::TransferToEvm {
-            source: vec![1; 32],  // Realistic 32-byte SVM address
-            destination: [0u8; 20],  // Realistic 20-byte EVM address
+            source: vec![1; 32],    // Realistic 32-byte SVM address
+            destination: [0u8; 20], // Realistic 20-byte EVM address
             amount: 1000,
         };
 
@@ -674,8 +738,8 @@ mod tests {
         let mut bridge = CrossVmBridge::new();
 
         let op = CrossVmOperation::TransferToSvm {
-            source: [1u8; 20],  // Realistic 20-byte EVM address
-            destination: vec![2; 32],  // Realistic 32-byte SVM address
+            source: [1u8; 20],        // Realistic 20-byte EVM address
+            destination: vec![2; 32], // Realistic 32-byte SVM address
             amount: 500,
         };
 
@@ -705,7 +769,9 @@ mod tests {
         // Test atomic swap contract
         let inputs = vec![
             Literal::String("0x1234567890123456789012345678901234567890".to_string()),
-            Literal::String("0x098765432109876543210987654321098765432109876543210987654321".to_string()),
+            Literal::String(
+                "0x098765432109876543210987654321098765432109876543210987654321".to_string(),
+            ),
             Literal::Integer(1000),
             Literal::Integer(2000),
         ];
@@ -728,7 +794,9 @@ mod tests {
         // Test creating an X3 atomic swap operation
         let inputs = vec![
             Literal::String("0x1234567890123456789012345678901234567890".to_string()),
-            Literal::String("0x098765432109876543210987654321098765432109876543210987654321".to_string()),
+            Literal::String(
+                "0x098765432109876543210987654321098765432109876543210987654321".to_string(),
+            ),
             Literal::Integer(1000),
             Literal::Integer(2000),
         ];
@@ -736,7 +804,12 @@ mod tests {
         let operation = bridge.create_x3_operation("atomic_swap", "contract code", inputs);
         assert!(operation.is_ok());
 
-        if let Ok(CrossVmOperation::AtomicSwap { evm_amount, svm_amount, .. }) = operation {
+        if let Ok(CrossVmOperation::AtomicSwap {
+            evm_amount,
+            svm_amount,
+            ..
+        }) = operation
+        {
             assert_eq!(evm_amount, 1000);
             assert_eq!(svm_amount, 2000);
         } else {

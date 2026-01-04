@@ -1,7 +1,7 @@
 //! Runtime storage migrations for `pallet-atlas-kernel`.
 
-use frame_support::weights::Weight;
 use frame_support::traits::{OnRuntimeUpgrade, StorageVersion};
+use frame_support::weights::Weight;
 use sp_std::marker::PhantomData;
 
 use crate::pallet;

@@ -16,11 +16,10 @@
 //! the same output for the same input, ensuring consensus between native and WASM
 //! execution backends.
 
-use pallet_atlas_kernel::adapters::{
-    ExecutionReceipt,
-    EvmExecutorAdapter, SvmExecutorAdapter, X3ExecutorAdapter,
-};
 use frame_support::pallet_prelude::*;
+use pallet_atlas_kernel::adapters::{
+    EvmExecutorAdapter, ExecutionReceipt, SvmExecutorAdapter, X3ExecutorAdapter,
+};
 use sp_std::vec::Vec;
 
 // ============================================================================
@@ -33,28 +32,27 @@ pub struct RealEvmAdapter;
 #[cfg(all(feature = "std", feature = "real-evm"))]
 impl EvmExecutorAdapter for RealEvmAdapter {
     fn execute(payload: &[u8], gas_limit: u64) -> Result<ExecutionReceipt, DispatchError> {
-        use atlas_evm_integration::{FrontierEvmExecutor, EvmConfig, EvmExecutor};
+        use atlas_evm_integration::{EvmConfig, EvmExecutor, FrontierEvmExecutor};
         use sp_runtime::traits::SaturatedConversion;
-        
+
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty EVM payload"));
         }
-        
-        let block_number: u64 = frame_system::Pallet::<crate::Runtime>::block_number()
-            .saturated_into();
-        let timestamp: u64 = pallet_timestamp::Pallet::<crate::Runtime>::now()
-            .saturated_into();
-        
+
+        let block_number: u64 =
+            frame_system::Pallet::<crate::Runtime>::block_number().saturated_into();
+        let timestamp: u64 = pallet_timestamp::Pallet::<crate::Runtime>::now().saturated_into();
+
         let executor = FrontierEvmExecutor::new();
         let config = EvmConfig {
             gas_limit,
             gas_price: 1_000_000_000, // 1 gwei
-            chain_id: 1337,           // Atlas Sphere chain ID  
+            chain_id: 1337,           // Atlas Sphere chain ID
             block_number,
             block_timestamp: timestamp,
             ..Default::default()
         };
-        
+
         match executor.execute(payload, &config) {
             Ok(result) => Ok(ExecutionReceipt {
                 success: result.success,
@@ -66,16 +64,17 @@ impl EvmExecutorAdapter for RealEvmAdapter {
             Err(_) => Err(DispatchError::Other("EVM execution failed")),
         }
     }
-    
+
     fn validate_bytecode(payload: &[u8]) -> Result<(), DispatchError> {
-        use atlas_evm_integration::{FrontierEvmExecutor, EvmExecutor};
-        
+        use atlas_evm_integration::{EvmExecutor, FrontierEvmExecutor};
+
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty EVM bytecode"));
         }
-        
+
         let executor = FrontierEvmExecutor::new();
-        executor.validate_bytecode(payload)
+        executor
+            .validate_bytecode(payload)
             .map_err(|_| DispatchError::Other("Invalid EVM bytecode"))
     }
 }
@@ -94,12 +93,12 @@ impl EvmExecutorAdapter for RealEvmAdapter {
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty EVM payload"));
         }
-        
+
         // Gas cost based on payload size (deterministic)
         let base_gas = 21_000u64;
         let data_gas = (payload.len() as u64).saturating_mul(16);
         let total_gas = base_gas.saturating_add(data_gas);
-        
+
         Ok(ExecutionReceipt {
             success: true,
             gas_used: core::cmp::min(total_gas, gas_limit),
@@ -108,7 +107,7 @@ impl EvmExecutorAdapter for RealEvmAdapter {
             state_changes: BoundedVec::default(),
         })
     }
-    
+
     fn validate_bytecode(payload: &[u8]) -> Result<(), DispatchError> {
         if payload.is_empty() {
             Err(DispatchError::Other("Empty EVM bytecode"))
@@ -130,17 +129,16 @@ impl SvmExecutorAdapter for RealSvmAdapter {
     fn execute(payload: &[u8], compute_limit: u64) -> Result<ExecutionReceipt, DispatchError> {
         use atlas_svm_integration::{RbpfSvmExecutor, SvmConfig, SvmExecutor};
         use sp_runtime::traits::SaturatedConversion;
-        
+
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty SVM payload"));
         }
-        
+
         let executor = RbpfSvmExecutor::new();
-        let block_height: u64 = frame_system::Pallet::<crate::Runtime>::block_number()
-            .saturated_into();
-        let timestamp: u64 = pallet_timestamp::Pallet::<crate::Runtime>::now()
-            .saturated_into();
-        
+        let block_height: u64 =
+            frame_system::Pallet::<crate::Runtime>::block_number().saturated_into();
+        let timestamp: u64 = pallet_timestamp::Pallet::<crate::Runtime>::now().saturated_into();
+
         let config = SvmConfig {
             compute_unit_limit: compute_limit,
             compute_unit_price: 1,
@@ -148,9 +146,9 @@ impl SvmExecutorAdapter for RealSvmAdapter {
             block_timestamp: timestamp,
             cluster_id: 1,
         };
-        
+
         let payer = [0u8; 32];
-        
+
         match executor.execute(payload, &payer, &config) {
             Ok(result) => Ok(ExecutionReceipt {
                 success: result.success,
@@ -162,16 +160,17 @@ impl SvmExecutorAdapter for RealSvmAdapter {
             Err(_) => Err(DispatchError::Other("SVM execution failed")),
         }
     }
-    
+
     fn validate_program(payload: &[u8]) -> Result<(), DispatchError> {
         use atlas_svm_integration::{RbpfSvmExecutor, SvmExecutor};
-        
+
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty SVM program"));
         }
-        
+
         let executor = RbpfSvmExecutor::new();
-        executor.validate_program(payload)
+        executor
+            .validate_program(payload)
             .map_err(|_| DispatchError::Other("Invalid SVM program"))
     }
 }
@@ -190,12 +189,12 @@ impl SvmExecutorAdapter for RealSvmAdapter {
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty SVM payload"));
         }
-        
+
         // Compute cost based on payload size (deterministic)
         let base_compute = 5_000u64;
         let data_compute = (payload.len() as u64).saturating_mul(10);
         let total_compute = base_compute.saturating_add(data_compute);
-        
+
         Ok(ExecutionReceipt {
             success: true,
             gas_used: core::cmp::min(total_compute, compute_limit),
@@ -204,7 +203,7 @@ impl SvmExecutorAdapter for RealSvmAdapter {
             state_changes: BoundedVec::default(),
         })
     }
-    
+
     fn validate_program(payload: &[u8]) -> Result<(), DispatchError> {
         if payload.is_empty() {
             Err(DispatchError::Other("Empty SVM program"))
@@ -224,25 +223,25 @@ pub struct RealX3Adapter;
 #[cfg(all(feature = "std", feature = "real-x3"))]
 impl X3ExecutorAdapter for RealX3Adapter {
     fn execute(payload: &[u8]) -> Result<ExecutionReceipt, DispatchError> {
-        use x3_vm::{VM, Verifier, VerifyOptions, VMConfig};
-        
+        use x3_vm::{VMConfig, Verifier, VerifyOptions, VM};
+
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty X3 payload"));
         }
-        
+
         // Verify bytecode first
         let verify_opts = VerifyOptions::on_chain();
         if Verifier::verify_module_bytes(payload, verify_opts).is_err() {
             return Err(DispatchError::Other("X3 bytecode verification failed"));
         }
-        
+
         // Create VM and execute
         let config = VMConfig::default();
         let mut vm = match VM::new_from_bytes(payload, config) {
             Ok(vm) => vm,
             Err(_) => return Err(DispatchError::Other("Failed to initialize X3 VM")),
         };
-        
+
         // Execute entrypoint function (index 0)
         match vm.call_function(0, &[]) {
             Ok(result) => Ok(ExecutionReceipt {
@@ -255,14 +254,14 @@ impl X3ExecutorAdapter for RealX3Adapter {
             Err(_) => Err(DispatchError::Other("X3 VM execution failed")),
         }
     }
-    
+
     fn validate(payload: &[u8]) -> Result<(), DispatchError> {
         use x3_vm::{Verifier, VerifyOptions};
-        
+
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty X3 bytecode"));
         }
-        
+
         let verify_opts = VerifyOptions::on_chain();
         Verifier::verify_module_bytes(payload, verify_opts)
             .map_err(|_| DispatchError::Other("X3 bytecode verification failed"))
@@ -283,12 +282,12 @@ impl X3ExecutorAdapter for RealX3Adapter {
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty X3 payload"));
         }
-        
+
         // Gas cost based on payload size (deterministic)
         let base_gas = 3_000u64;
         let code_gas = (payload.len() as u64).saturating_mul(5);
         let total_gas = base_gas.saturating_add(code_gas);
-        
+
         Ok(ExecutionReceipt {
             success: true,
             gas_used: total_gas,
@@ -297,7 +296,7 @@ impl X3ExecutorAdapter for RealX3Adapter {
             state_changes: BoundedVec::default(),
         })
     }
-    
+
     fn validate(payload: &[u8]) -> Result<(), DispatchError> {
         if payload.is_empty() {
             Err(DispatchError::Other("Empty X3 bytecode"))
@@ -371,15 +370,13 @@ pub struct CrossVMTransaction<AccountId, BlockNumber> {
 }
 
 /// Cross-VM Transaction Manager
-/// 
+///
 /// Manages atomic execution of multi-step transactions across different VMs (EVM, SVM, X3).
 /// Currently reserved for advanced use cases requiring coordinated cross-VM execution.
-#[allow(dead_code)]
 pub struct CrossVMTransactionManager<T: frame_system::Config> {
     _phantom: sp_std::marker::PhantomData<T>,
 }
 
-#[allow(dead_code)]
 impl<T: frame_system::Config> CrossVMTransactionManager<T>
 where
     T::AccountId: Clone,
@@ -422,12 +419,19 @@ where
             }
 
             // Store result and update resource usage
-            executed_results.try_push(Some(result.clone())).map_err(|_| DispatchError::Other("Too many results"))?;
-            transaction.total_resources_used = transaction.total_resources_used.saturating_add(result.gas_used);
+            executed_results
+                .try_push(Some(result.clone()))
+                .map_err(|_| DispatchError::Other("Too many results"))?;
+            transaction.total_resources_used = transaction
+                .total_resources_used
+                .saturating_add(result.gas_used);
 
             // Generate rollback data for this step
             let rollback_data = Self::generate_rollback_data(&result);
-            transaction.rollback_data.try_push(Some(rollback_data)).map_err(|_| DispatchError::Other("Too many rollback entries"))?;
+            transaction
+                .rollback_data
+                .try_push(Some(rollback_data))
+                .map_err(|_| DispatchError::Other("Too many rollback entries"))?;
         }
 
         // All steps executed successfully - commit transaction
@@ -458,7 +462,9 @@ where
     }
 
     /// Validate step dependencies form a valid DAG
-    fn validate_dependencies(steps: &BoundedVec<VMExecutionStep, ConstU32<16>>) -> Result<(), DispatchError> {
+    fn validate_dependencies(
+        steps: &BoundedVec<VMExecutionStep, ConstU32<16>>,
+    ) -> Result<(), DispatchError> {
         // Check for cycles and invalid dependencies
         for (i, step) in steps.iter().enumerate() {
             for &dep in &step.dependencies {
@@ -513,12 +519,17 @@ where
     }
 
     /// Execute rollback for a failed step
-    fn execute_rollback(rollback_data: &BoundedVec<u8, ConstU32<8192>>) -> Result<(), DispatchError> {
+    fn execute_rollback(
+        rollback_data: &BoundedVec<u8, ConstU32<8192>>,
+    ) -> Result<(), DispatchError> {
         // Execute rollback logic - revert state changes
         // This is a simplified implementation
         if !rollback_data.is_empty() {
             // In production, this would revert the specific state changes
-            log::info!("Executing rollback for {} bytes of data", rollback_data.len());
+            log::info!(
+                "Executing rollback for {} bytes of data",
+                rollback_data.len()
+            );
         }
         Ok(())
     }
@@ -529,18 +540,19 @@ where
 // ============================================================================
 
 /// Reentrancy guard for cross-VM calls
-/// 
+///
 /// Prevents unsafe reentrancy patterns when code executes across multiple VMs.
 /// Currently reserved for future protocol safety enhancements.
-#[allow(dead_code)]
 pub struct CrossVMReentrancyGuard<T: frame_system::Config> {
     _phantom: sp_std::marker::PhantomData<T>,
 }
 
-#[allow(dead_code)]
 impl<T: frame_system::Config> CrossVMReentrancyGuard<T> {
     /// Check if a cross-VM call is allowed (prevents reentrancy)
-    pub fn check_reentrancy(account: &T::AccountId, target_vm: VMType) -> Result<(), DispatchError> {
+    pub fn check_reentrancy(
+        account: &T::AccountId,
+        target_vm: VMType,
+    ) -> Result<(), DispatchError> {
         // Implementation would check call stack and prevent cycles
         // This is a simplified version
 
@@ -550,20 +562,32 @@ impl<T: frame_system::Config> CrossVMReentrancyGuard<T> {
         // 3. Limit call depth
         // 4. Check gas limits across VMs
 
-        log::debug!("Reentrancy check passed for account {:?} calling {:?}", account, target_vm);
+        log::debug!(
+            "Reentrancy check passed for account {:?} calling {:?}",
+            account,
+            target_vm
+        );
         Ok(())
     }
 
     /// Record a cross-VM call for reentrancy tracking
     pub fn record_call(account: &T::AccountId, target_vm: VMType) {
         // Record the call in the call stack
-        log::debug!("Recording cross-VM call for account {:?} to {:?}", account, target_vm);
+        log::debug!(
+            "Recording cross-VM call for account {:?} to {:?}",
+            account,
+            target_vm
+        );
     }
 
     /// Clear call record after execution
     pub fn clear_call(account: &T::AccountId, target_vm: VMType) {
         // Remove from call stack
-        log::debug!("Clearing cross-VM call record for account {:?} from {:?}", account, target_vm);
+        log::debug!(
+            "Clearing cross-VM call record for account {:?} from {:?}",
+            account,
+            target_vm
+        );
     }
 }
 
@@ -587,15 +611,13 @@ pub struct CrossVMMessage {
 }
 
 /// Cross-VM Communication Bridge
-/// 
+///
 /// Routes messages between different VM environments with reentrancy protection.
 /// Currently reserved for future protocol enhancements requiring inter-VM messaging.
-#[allow(dead_code)]
 pub struct CrossVMBridge<T: frame_system::Config> {
     _phantom: sp_std::marker::PhantomData<T>,
 }
 
-#[allow(dead_code)]
 impl<T: frame_system::Config> CrossVMBridge<T> {
     /// Send a message from one VM to another
     pub fn send_message(
@@ -620,9 +642,18 @@ impl<T: frame_system::Config> CrossVMBridge<T> {
 
     /// Validate cross-VM message format
     pub fn validate_message(message: &CrossVMMessage) -> Result<(), DispatchError> {
-        ensure!(!message.payload.is_empty(), DispatchError::Other("Empty message payload"));
-        ensure!(message.gas_limit > 0, DispatchError::Other("Invalid gas limit"));
-        ensure!(message.source_vm != message.target_vm, DispatchError::Other("Cannot send message to same VM"));
+        ensure!(
+            !message.payload.is_empty(),
+            DispatchError::Other("Empty message payload")
+        );
+        ensure!(
+            message.gas_limit > 0,
+            DispatchError::Other("Invalid gas limit")
+        );
+        ensure!(
+            message.source_vm != message.target_vm,
+            DispatchError::Other("Cannot send message to same VM")
+        );
 
         Ok(())
     }

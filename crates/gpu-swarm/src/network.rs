@@ -7,6 +7,7 @@
 use crate::error::{SwarmError, SwarmResult};
 use crate::node::NodeId;
 use crate::protocol::{MessageEnvelope, SwarmMessage};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::mpsc;
@@ -77,7 +78,8 @@ impl PeerId {
     /// Create a random peer ID
     pub fn random() -> Self {
         let mut id = [0u8; 32];
-        getrandom::getrandom(&mut id).unwrap_or_default();
+        let mut rng = rand::rngs::OsRng;
+        rng.fill_bytes(&mut id);
         PeerId(id)
     }
     

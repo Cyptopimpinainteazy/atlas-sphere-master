@@ -11,7 +11,7 @@ use sp_std::vec::Vec;
 /// Arbitrum chain adapter
 pub struct ArbitrumAdapter {
     config: ChainConfig,
-    #[allow(dead_code)]
+    /// Transaction nonce tracking (TODO: implement nonce management)
     nonce: u64,
 }
 

@@ -2,6 +2,7 @@
 
 use crate::node::{GpuCapabilities, NodeId, NodeMetrics};
 use crate::task::{Task, TaskExecution, TaskId, TaskStatus};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
 /// Ed25519 signature wrapper (64 bytes)
@@ -553,7 +554,8 @@ impl MessageEnvelope {
     /// Create a new envelope
     pub fn new(sender: NodeId, message: SwarmMessage) -> Self {
         let mut message_id = [0u8; 16];
-        getrandom::getrandom(&mut message_id).unwrap_or_default();
+        let mut rng = rand::rngs::OsRng;
+        rng.fill_bytes(&mut message_id);
 
         Self {
             version: crate::PROTOCOL_VERSION as u8,

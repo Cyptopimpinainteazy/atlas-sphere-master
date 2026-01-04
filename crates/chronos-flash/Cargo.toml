@@ -23,6 +23,7 @@ serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 tokio = { version = "1.0", features = ["full", "sync", "time", "rt-multi-thread"] }
 async-trait = "0.1"
 futures = "0.3"
+futures-util = "0.3"
 
 # Error handling
 thiserror = "1.0"
@@ -46,6 +47,18 @@ chrono = { version = "0.4", features = ["serde"] }
 # Logging
 tracing = "0.1"
 log = "0.4"
+env_logger = "0.11"
+dotenvy = "0.15"
+
+# HTTP client (for JSON-RPC polling)
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+
+# WebSocket client (for EVM pending tx subscriptions)
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
+url = "2.5"
+
+# Lightweight HTTP server for /healthz
+hyper = { version = "0.14", features = ["server", "http1", "tcp"] }
 
 # Workspace deps (optional, enable when available)
 # gpu-swarm = { path = "../gpu-swarm" }

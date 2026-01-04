@@ -4,6 +4,8 @@ use crate::error::{SwarmError, SwarmResult};
 use crate::node::NodeId;
 use crate::protocol::{ExecutionProof, TaskResult, VerificationResult};
 use crate::task::{Task, TaskId};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -357,14 +359,27 @@ pub mod utils {
         hasher.finalize().into()
     }
 
-    /// Verify a node's signature (placeholder - real impl would use ed25519)
+    /// Verify a node's ed25519 signature
+    ///
+    /// Uses ed25519-dalek for cryptographic verification. Returns `false` if:
+    /// - Public key is invalid
+    /// - Signature format is invalid
+    /// - Signature verification fails
     pub fn verify_signature(
-        _public_key: &[u8; 32],
-        _message: &[u8],
-        _signature: &[u8; 64],
+        public_key: &[u8; 32],
+        message: &[u8],
+        signature: &[u8; 64],
     ) -> bool {
-        // TODO: Implement ed25519 verification
-        true
+        // Parse the public key
+        let Ok(verifying_key) = VerifyingKey::from_bytes(public_key) else {
+            return false;
+        };
+
+        // Parse the signature (from_bytes creates a Signature directly)
+        let sig = Signature::from_bytes(signature);
+
+        // Verify the signature
+        verifying_key.verify(message, &sig).is_ok()
     }
 }
 
@@ -391,7 +406,8 @@ impl ReexecutionVerifier {
         // Randomly sample based on reexecution rate
         let should_reexecute = {
             let mut bytes = [0u8; 4];
-            getrandom::getrandom(&mut bytes).unwrap_or_default();
+            let mut rng = rand::rngs::OsRng;
+            rng.fill_bytes(&mut bytes);
             let random = u32::from_le_bytes(bytes);
             random % self.config.reexecution_rate == 0
         };

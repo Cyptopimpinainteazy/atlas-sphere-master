@@ -15,8 +15,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use sp_std::vec::Vec;
 use sp_std::vec;
+use sp_std::vec::Vec;
 
 /// Result type for SVM operations
 pub type SvmResult<T> = Result<T, SvmError>;
@@ -84,11 +84,11 @@ pub struct SvmConfig {
 impl Default for SvmConfig {
     fn default() -> Self {
         Self {
-            compute_unit_limit: 200_000,      // Standard compute limit
-            compute_unit_price: 1,              // 1 microlamport per compute unit
+            compute_unit_limit: 200_000, // Standard compute limit
+            compute_unit_price: 1,       // 1 microlamport per compute unit
             block_height: 0,
             block_timestamp: 0,
-            cluster_id: 1,                     // Solana mainnet-beta cluster ID
+            cluster_id: 1, // Solana mainnet-beta cluster ID
         }
     }
 }
@@ -170,18 +170,18 @@ mod rbpf {
     use sp_core::hashing::blake2_256;
     use sp_std::collections::btree_map::BTreeMap;
 
-    use solana_rbpf as _solana_rbpf;
     use _solana_rbpf::aligned_memory::AlignedMemory;
     use _solana_rbpf::ebpf;
     use _solana_rbpf::elf::Executable;
     use _solana_rbpf::memory_region::{MemoryMapping, MemoryRegion};
     use _solana_rbpf::program::{BuiltinProgram, FunctionRegistry, SBPFVersion};
-    use solana_rbpf::vm::{EbpfVm, TestContextObject, ContextObject};
     use _solana_rbpf::verifier::RequisiteVerifier;
+    use solana_rbpf as _solana_rbpf;
+    use solana_rbpf::vm::{ContextObject, EbpfVm, TestContextObject};
 
-    use sp_std::vec::Vec;
     use core::convert::TryInto;
     use sp_std::sync::Arc;
+    use sp_std::vec::Vec;
 
     /// SCALE encoded SVM payload (program bytecode, accounts, instruction data)
     #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
@@ -236,7 +236,9 @@ mod rbpf {
 
     impl StateBackend {
         pub fn new() -> Self {
-            Self { accounts: BTreeMap::new() }
+            Self {
+                accounts: BTreeMap::new(),
+            }
         }
 
         pub fn load_account(&self, pubkey: &[u8; 32]) -> Option<SvmAccount> {
@@ -277,7 +279,9 @@ mod rbpf {
     }
 
     impl RbpfSvmExecutor {
-        pub fn new() -> Self { Self {} }
+        pub fn new() -> Self {
+            Self {}
+        }
 
         /// Minimal helper: attempt to perform rBPF verification using solana_rbpf
         fn verify_bpf(program: &[u8]) -> Result<(), ()> {
@@ -285,7 +289,12 @@ mod rbpf {
             let loader = Arc::new(BuiltinProgram::new_mock());
             let function_registry = FunctionRegistry::default();
             let sbpf_version = SBPFVersion::V2;
-            let exe_res = Executable::<TestContextObject>::from_text_bytes(program, loader, sbpf_version, function_registry);
+            let exe_res = Executable::<TestContextObject>::from_text_bytes(
+                program,
+                loader,
+                sbpf_version,
+                function_registry,
+            );
             match exe_res {
                 Ok(exe) => exe.verify::<RequisiteVerifier>().map_err(|_| ()),
                 Err(_) => Err(()),
@@ -301,7 +310,8 @@ mod rbpf {
             config: &super::SvmConfig,
         ) -> super::SvmResult<super::SvmExecutionResult> {
             // 1. Decode payload
-            let p = SvmPayload::decode(&mut &payload[..]).map_err(|_| super::SvmError::InvalidPayload)?;
+            let p = SvmPayload::decode(&mut &payload[..])
+                .map_err(|_| super::SvmError::InvalidPayload)?;
             if p.program.is_empty() {
                 return Err(super::SvmError::InvalidPayload);
             }
@@ -322,9 +332,16 @@ mod rbpf {
             let function_registry = FunctionRegistry::default();
             let sbpf_version = SBPFVersion::V2;
 
-            let executable = Executable::<TestContextObject>::from_text_bytes(p.program.as_slice(), loader.clone(), sbpf_version.clone(), function_registry)
+            let executable = Executable::<TestContextObject>::from_text_bytes(
+                p.program.as_slice(),
+                loader.clone(),
+                sbpf_version.clone(),
+                function_registry,
+            )
+            .map_err(|_| super::SvmError::InvalidPayload)?;
+            executable
+                .verify::<RequisiteVerifier>()
                 .map_err(|_| super::SvmError::InvalidPayload)?;
-            executable.verify::<RequisiteVerifier>().map_err(|_| super::SvmError::InvalidPayload)?;
 
             let stack_size = executable.get_config().stack_size();
             let mut stack = AlignedMemory::<{ ebpf::HOST_ALIGN }>::zero_filled(stack_size);
@@ -349,16 +366,32 @@ mod rbpf {
             }
 
             let mut regions: Vec<MemoryRegion> = vec![executable.get_ro_region()];
-            regions.push(MemoryRegion::new_writable(stack.as_slice_mut(), ebpf::MM_STACK_START));
-            regions.push(MemoryRegion::new_writable(heap.as_slice_mut(), ebpf::MM_HEAP_START));
-            regions.push(MemoryRegion::new_writable(input_mem.as_mut_slice(), ebpf::MM_INPUT_START));
+            regions.push(MemoryRegion::new_writable(
+                stack.as_slice_mut(),
+                ebpf::MM_STACK_START,
+            ));
+            regions.push(MemoryRegion::new_writable(
+                heap.as_slice_mut(),
+                ebpf::MM_HEAP_START,
+            ));
+            regions.push(MemoryRegion::new_writable(
+                input_mem.as_mut_slice(),
+                ebpf::MM_INPUT_START,
+            ));
 
-            let memory_mapping = MemoryMapping::new(regions, executable.get_config(), &sbpf_version)
-                .map_err(|_| super::SvmError::ExecutionFailed)?;
+            let memory_mapping =
+                MemoryMapping::new(regions, executable.get_config(), &sbpf_version)
+                    .map_err(|_| super::SvmError::ExecutionFailed)?;
 
             let mut context = TestContextObject::new(config.compute_unit_limit as u64);
 
-            let mut vm = EbpfVm::new(loader.clone(), &sbpf_version, &mut context, memory_mapping, stack_len);
+            let mut vm = EbpfVm::new(
+                loader.clone(),
+                &sbpf_version,
+                &mut context,
+                memory_mapping,
+                stack_len,
+            );
 
             // Execute program (interpreted = false -> interpreter-only)
             let (instruction_count, program_result) = vm.execute_program(&executable, false);
@@ -392,15 +425,23 @@ mod rbpf {
                 let s = core::str::from_utf8(&p.data[7..]).unwrap_or("");
                 let parts: Vec<&str> = s.split(':').collect();
                 if parts.len() == 4 {
-                    if let (Ok(dst_off), Ok(len)) = (parts[2].parse::<usize>(), parts[3].parse::<usize>()) {
+                    if let (Ok(dst_off), Ok(len)) =
+                        (parts[2].parse::<usize>(), parts[3].parse::<usize>())
+                    {
                         // find source and destination accounts by hex pubkey
                         let src_hex = parts[0];
                         let dst_hex = parts[1];
-                        if let (Ok(src_pub), Ok(dst_pub)) = (hex::decode(src_hex), hex::decode(dst_hex)) {
+                        if let (Ok(src_pub), Ok(dst_pub)) =
+                            (hex::decode(src_hex), hex::decode(dst_hex))
+                        {
                             if src_pub.len() == 32 && dst_pub.len() == 32 {
-                                let mut src = [0u8;32]; src.copy_from_slice(&src_pub);
-                                let mut dst = [0u8;32]; dst.copy_from_slice(&dst_pub);
-                                if let (Some(mut src_acc), Some(mut dst_acc)) = (backend.load_account(&src), backend.load_account(&dst)) {
+                                let mut src = [0u8; 32];
+                                src.copy_from_slice(&src_pub);
+                                let mut dst = [0u8; 32];
+                                dst.copy_from_slice(&dst_pub);
+                                if let (Some(mut src_acc), Some(mut dst_acc)) =
+                                    (backend.load_account(&src), backend.load_account(&dst))
+                                {
                                     // clamp length
                                     let copy_len = core::cmp::min(len, src_acc.data.len());
                                     let dst_off = core::cmp::min(dst_off, dst_acc.data.len());
@@ -423,15 +464,29 @@ mod rbpf {
                 let b64 = &p.data[4..];
                 if let Ok(bytes) = base64::decode(b64) {
                     // recursively execute nested payload with reduced compute limit
-                    let nested_cfg = super::SvmConfig::new((config.compute_unit_limit / 4), config.compute_unit_price, config.block_height, config.block_timestamp, config.cluster_id);
+                    let nested_cfg = super::SvmConfig::new(
+                        (config.compute_unit_limit / 4),
+                        config.compute_unit_price,
+                        config.block_height,
+                        config.block_timestamp,
+                        config.cluster_id,
+                    );
                     let nested_res = self.execute(&bytes, _payer, &nested_cfg);
                     match nested_res {
                         Ok(nr) => {
                             // merge account updates
-                            compute_units_used = compute_units_used.saturating_add(nr.compute_units_used);
+                            compute_units_used =
+                                compute_units_used.saturating_add(nr.compute_units_used);
                             for u in nr.account_updates {
                                 // apply to backend
-                                backend.store_account(super::rbpf::SvmAccount { pubkey: u.pubkey, lamports: u.lamports, data: u.data.clone(), owner: [0u8;32], executable: u.executable, rent_epoch: 0 });
+                                backend.store_account(super::rbpf::SvmAccount {
+                                    pubkey: u.pubkey,
+                                    lamports: u.lamports,
+                                    data: u.data.clone(),
+                                    owner: [0u8; 32],
+                                    executable: u.executable,
+                                    rent_epoch: 0,
+                                });
                             }
                             if !nr.logs.is_empty() {
                                 logs.extend(nr.logs.clone());
@@ -447,17 +502,28 @@ mod rbpf {
             for acc_in in &p.accounts {
                 if let Some((offset, _len)) = account_offsets.get(&acc_in.pubkey) {
                     let base = *offset;
-                    let lamports = u64::from_le_bytes(input_mem[base..base+8].try_into().unwrap_or([0u8;8]));
-                    let owner_slice = &input_mem[base+8..base+40];
-                    let mut owner = [0u8;32]; owner.copy_from_slice(owner_slice);
-                    let exec_flag = input_mem[base+40] != 0;
-                    let data_len = u32::from_le_bytes(input_mem[base+41..base+45].try_into().unwrap_or([0u8;4])) as usize;
+                    let lamports = u64::from_le_bytes(
+                        input_mem[base..base + 8].try_into().unwrap_or([0u8; 8]),
+                    );
+                    let owner_slice = &input_mem[base + 8..base + 40];
+                    let mut owner = [0u8; 32];
+                    owner.copy_from_slice(owner_slice);
+                    let exec_flag = input_mem[base + 40] != 0;
+                    let data_len = u32::from_le_bytes(
+                        input_mem[base + 41..base + 45]
+                            .try_into()
+                            .unwrap_or([0u8; 4]),
+                    ) as usize;
                     let data_start = base + 45;
                     let data_end = data_start + data_len;
                     let data = input_mem[data_start..data_end].to_vec();
 
                     if let Some(stored) = backend.load_account(&acc_in.pubkey) {
-                        if data != stored.data || lamports != stored.lamports || exec_flag != stored.executable || owner != stored.owner {
+                        if data != stored.data
+                            || lamports != stored.lamports
+                            || exec_flag != stored.executable
+                            || owner != stored.owner
+                        {
                             account_updates.push(super::AccountUpdate {
                                 pubkey: acc_in.pubkey,
                                 data: stored.data.clone(),
@@ -482,7 +548,8 @@ mod rbpf {
         }
 
         fn validate_program(&self, payload: &[u8]) -> super::SvmResult<()> {
-            let p = SvmPayload::decode(&mut &payload[..]).map_err(|_| super::SvmError::InvalidPayload)?;
+            let p = SvmPayload::decode(&mut &payload[..])
+                .map_err(|_| super::SvmError::InvalidPayload)?;
             if p.program.is_empty() {
                 return Err(super::SvmError::InvalidPayload);
             }
@@ -501,7 +568,11 @@ mod rbpf {
 
         #[test]
         fn test_validate_rejects_invalid_program() {
-            let payload = SvmPayload { program: vec![0x00, 0x01], accounts: vec![], data: vec![] };
+            let payload = SvmPayload {
+                program: vec![0x00, 0x01],
+                accounts: vec![],
+                data: vec![],
+            };
             let exec = RbpfSvmExecutor::new();
             let res = exec.validate_program(&payload.encode());
             // Most random bytes are rejected by the rBPF verifier
@@ -511,11 +582,15 @@ mod rbpf {
         #[test]
         fn test_execute_minimal_program() {
             // minimal program that just exits
-            let prog = vec![0x95,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
-            let payload = SvmPayload { program: prog.clone(), accounts: vec![], data: vec![] };
+            let prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            let payload = SvmPayload {
+                program: prog.clone(),
+                accounts: vec![],
+                data: vec![],
+            };
             let exec = RbpfSvmExecutor::new();
             let cfg = super::super::SvmConfig::default();
-            let res = exec.execute(&payload.encode(), &[0u8;32], &cfg);
+            let res = exec.execute(&payload.encode(), &[0u8; 32], &cfg);
             assert!(res.is_ok());
             let r = res.unwrap();
             assert_eq!(r.compute_units_used, 1);
@@ -524,12 +599,16 @@ mod rbpf {
 
         #[test]
         fn test_sol_log_syscall_simulation() {
-            let prog = vec![0x95,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
+            let prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
             let data = [b"LOG:", b"hello world"].concat();
-            let payload = SvmPayload { program: prog, accounts: vec![], data };
+            let payload = SvmPayload {
+                program: prog,
+                accounts: vec![],
+                data,
+            };
             let exec = RbpfSvmExecutor::new();
             let cfg = super::super::SvmConfig::default();
-            let res = exec.execute(&payload.encode(), &[0u8;32], &cfg).unwrap();
+            let res = exec.execute(&payload.encode(), &[0u8; 32], &cfg).unwrap();
             assert_eq!(res.logs.len(), 1);
             assert_eq!(res.logs[0], b"hello world".to_vec());
         }
@@ -537,18 +616,42 @@ mod rbpf {
         #[test]
         fn test_memcpy_syscall_simulation() {
             // prepare two accounts
-            let mut acc_a = SvmAccountInput { pubkey: [2u8;32], is_signer:false, is_writable:true, lamports:0, data: vec![1,2,3,4,5], owner: [0u8;32], executable:false };
-            let mut acc_b = SvmAccountInput { pubkey: [3u8;32], is_signer:false, is_writable:true, lamports:0, data: vec![0,0,0,0,0], owner: [0u8;32], executable:false };
+            let mut acc_a = SvmAccountInput {
+                pubkey: [2u8; 32],
+                is_signer: false,
+                is_writable: true,
+                lamports: 0,
+                data: vec![1, 2, 3, 4, 5],
+                owner: [0u8; 32],
+                executable: false,
+            };
+            let mut acc_b = SvmAccountInput {
+                pubkey: [3u8; 32],
+                is_signer: false,
+                is_writable: true,
+                lamports: 0,
+                data: vec![0, 0, 0, 0, 0],
+                owner: [0u8; 32],
+                executable: false,
+            };
             let src_hex = hex::encode(acc_a.pubkey);
             let dst_hex = hex::encode(acc_b.pubkey);
             let data = format!("MEMCPY:{}:{}:1:2", src_hex, dst_hex).into_bytes();
-            let prog = vec![0x95,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
-            let payload = SvmPayload { program: prog, accounts: vec![acc_a.clone(), acc_b.clone()], data };
+            let prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            let payload = SvmPayload {
+                program: prog,
+                accounts: vec![acc_a.clone(), acc_b.clone()],
+                data,
+            };
             let exec = RbpfSvmExecutor::new();
             let cfg = super::super::SvmConfig::default();
-            let res = exec.execute(&payload.encode(), &[0u8;32], &cfg).unwrap();
+            let res = exec.execute(&payload.encode(), &[0u8; 32], &cfg).unwrap();
             // dst should now have bytes copied from src at offset 1 length 2
-            let updated = res.account_updates.into_iter().find(|u| u.pubkey == acc_b.pubkey).unwrap();
+            let updated = res
+                .account_updates
+                .into_iter()
+                .find(|u| u.pubkey == acc_b.pubkey)
+                .unwrap();
             assert_eq!(updated.data[1], 1);
             assert_eq!(updated.data[2], 2);
         }
@@ -556,15 +659,23 @@ mod rbpf {
         #[test]
         fn test_cpi_simulation() {
             // nested payload: program that logs 'nested'
-            let nested_prog = vec![0x95,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
-            let nested_payload = SvmPayload { program: nested_prog, accounts: vec![], data: [b"LOG:", b"nested"].concat() };
+            let nested_prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            let nested_payload = SvmPayload {
+                program: nested_prog,
+                accounts: vec![],
+                data: [b"LOG:", b"nested"].concat(),
+            };
             let nested_b64 = base64::encode(&nested_payload.encode());
-            let top_prog = vec![0x95,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
+            let top_prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
             let data = [b"CPI:", nested_b64.as_bytes()].concat();
-            let payload = SvmPayload { program: top_prog, accounts: vec![], data };
+            let payload = SvmPayload {
+                program: top_prog,
+                accounts: vec![],
+                data,
+            };
             let exec = RbpfSvmExecutor::new();
             let cfg = super::super::SvmConfig::default();
-            let res = exec.execute(&payload.encode(), &[0u8;32], &cfg).unwrap();
+            let res = exec.execute(&payload.encode(), &[0u8; 32], &cfg).unwrap();
             assert!(res.logs.iter().any(|l| l == b"nested"));
         }
 
@@ -573,7 +684,11 @@ mod rbpf {
         fn test_validate_accepts_valid_program() {
             let hex_str = include_str!("../test-data/return_success.hex").trim();
             let program_bytes = hex::decode(hex_str).expect("hex decode");
-            let payload = SvmPayload { program: program_bytes.to_vec(), accounts: vec![], data: vec![] };
+            let payload = SvmPayload {
+                program: program_bytes.to_vec(),
+                accounts: vec![],
+                data: vec![],
+            };
             let exec = RbpfSvmExecutor::new();
             assert!(exec.validate_program(&payload.encode()).is_ok());
         }
@@ -582,7 +697,11 @@ mod rbpf {
         fn test_validate_accepts_write_program() {
             let hex_str = include_str!("../test-data/write_account.hex").trim();
             let program_bytes = hex::decode(hex_str).expect("hex decode");
-            let payload = SvmPayload { program: program_bytes.to_vec(), accounts: vec![], data: vec![] };
+            let payload = SvmPayload {
+                program: program_bytes.to_vec(),
+                accounts: vec![],
+                data: vec![],
+            };
             let exec = RbpfSvmExecutor::new();
             assert!(exec.validate_program(&payload.encode()).is_ok());
         }
@@ -593,7 +712,7 @@ mod rbpf {
             let acc = SvmAccount {
                 pubkey: [1u8; 32],
                 lamports: 100,
-                data: vec![1,2,3],
+                data: vec![1, 2, 3],
                 owner: [0u8; 32],
                 executable: false,
                 rent_epoch: 0,
@@ -607,8 +726,12 @@ mod rbpf {
         #[test]
         fn test_compute_unit_limit_enforced() {
             // minimal exit program (1 instruction)
-            let prog = vec![0x95,0x00,0x00,0x00,0x00,0x00,0x00,0x00];
-            let payload = SvmPayload { program: prog.clone(), accounts: vec![], data: vec![] };
+            let prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+            let payload = SvmPayload {
+                program: prog.clone(),
+                accounts: vec![],
+                data: vec![],
+            };
             let exec = RbpfSvmExecutor::new();
             // Set a tiny compute limit to force an out-of-compute error (limit 0)
             let cfg = super::super::SvmConfig::new(0, 1, 0, 0, 1);
@@ -627,12 +750,12 @@ pub fn compute_svm_prepare_root(
     result: &SvmExecutionResult,
 ) -> [u8; 32] {
     use sp_core::hashing::blake2_256;
-    
+
     let mut preimage = Vec::new();
     preimage.extend_from_slice(comit_id);
     preimage.extend_from_slice(payload);
     preimage.extend_from_slice(&result.state_root);
-    
+
     blake2_256(&preimage)
 }
 
@@ -644,7 +767,7 @@ mod tests {
     fn test_default_config() {
         let config = SvmConfig::default();
         assert_eq!(config.compute_unit_limit, 200_000);
-        assert_eq!(config.cluster_id, 1);  // Mainnet cluster
+        assert_eq!(config.cluster_id, 1); // Mainnet cluster
     }
 
     #[test]
@@ -663,4 +786,3 @@ mod tests {
         assert_eq!(result, Err(SvmError::InvalidPayload));
     }
 }
-

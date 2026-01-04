@@ -6,13 +6,18 @@ members = [
     "pallets/pallet-invariants",
     "pallets/swarm-media",
     "pallets/swarm-evolution",
+    "crates/atlas-sdk",
+    "crates/chronos-flash",
     "crates/evm-integration",
     "crates/svm-integration",
     "crates/cross-vm-bridge",
     "crates/x3-htlc",
+    "crates/receipts",
+    "crates/validators",
     "runtime",
     "node",
 ]
+exclude = ["crates/quantum-swarm"]
 default-members = ["runtime"]
 resolver = "2"
 

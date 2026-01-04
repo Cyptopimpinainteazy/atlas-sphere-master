@@ -9,6 +9,9 @@ use sp_std::vec::Vec;
 use crate::error::ExternalChainError;
 use crate::ChainType;
 
+#[cfg(feature = "std")]
+use std::env;
+
 /// Result type for adapter operations
 pub type AdapterResult<T> = Result<T, ExternalChainError>;
 
@@ -34,12 +37,38 @@ pub struct ChainConfig {
 }
 
 impl ChainConfig {
+    pub(crate) fn resolve_rpc_url_bytes(chain_id: u64, default_rpc: &str) -> Vec<u8> {
+        #[cfg(feature = "std")]
+        {
+            let urls_key = format!("ATLAS_EXTERNAL_RPC_URLS_{chain_id}");
+            if let Ok(urls) = env::var(&urls_key) {
+                if let Some(first) = urls
+                    .split(',')
+                    .map(|s| s.trim())
+                    .find(|s| !s.is_empty())
+                {
+                    return first.as_bytes().to_vec();
+                }
+            }
+
+            let url_key = format!("ATLAS_EXTERNAL_RPC_URL_{chain_id}");
+            if let Ok(url) = env::var(&url_key) {
+                let url = url.trim();
+                if !url.is_empty() {
+                    return url.as_bytes().to_vec();
+                }
+            }
+        }
+
+        default_rpc.as_bytes().to_vec()
+    }
+
     /// Create config for a specific chain type
     pub fn for_chain(chain_type: ChainType) -> Self {
         let (bridge, settlement) = Self::default_contracts(chain_type);
         Self {
             chain_type: chain_type.chain_id(),
-            rpc_url: chain_type.default_rpc().as_bytes().to_vec(),
+            rpc_url: Self::resolve_rpc_url_bytes(chain_type.chain_id(), chain_type.default_rpc()),
             ws_url: None,
             bridge_contract: bridge,
             settlement_contract: settlement,

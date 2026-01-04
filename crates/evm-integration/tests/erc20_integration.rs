@@ -1,8 +1,8 @@
 #![cfg(feature = "frontier-executor")]
 
-use std::path::PathBuf;
+use atlas_evm_integration::{EvmConfig, EvmError, EvmExecutor, FrontierEvmExecutor};
 use std::fs;
-use atlas_evm_integration::{EvmConfig, FrontierEvmExecutor, EvmError, EvmExecutor};
+use std::path::PathBuf;
 
 #[test]
 fn erc20_fixture_test() {
@@ -22,7 +22,7 @@ fn erc20_fixture_test() {
     deploy_payload.extend_from_slice(&bin);
 
     let executor = FrontierEvmExecutor;
-    let deploy_res = executor.execute(&deploy_payload, &[0u8;20], &EvmConfig::default());
+    let deploy_res = executor.execute(&deploy_payload, &[0u8; 20], &EvmConfig::default());
 
     match deploy_res {
         Ok(res) => {
@@ -47,13 +47,13 @@ fn erc20_minimal_fallback_test() {
     // Runtime: SLOAD(0) -> MSTORE(0, sload) -> RETURN(0,32)
     let runtime: Vec<u8> = vec![
         0x60, 0x00, // PUSH1 0x00
-        0x54,       // SLOAD
+        0x54, // SLOAD
         0x60, 0x20, // PUSH1 0x20
         0x60, 0x00, // PUSH1 0x00
-        0x52,       // MSTORE
+        0x52, // MSTORE
         0x60, 0x20, // PUSH1 0x20
         0x60, 0x00, // PUSH1 0x00
-        0xF3,       // RETURN
+        0xF3, // RETURN
     ];
 
     // Constructor: PUSH1 <total> PUSH1 0x00 SSTORE | CODECOPY from offset | RETURN
@@ -61,16 +61,23 @@ fn erc20_minimal_fallback_test() {
     let runtime_len = runtime.len() as u8;
     // constructor size: 3 (push total + push slot + sstore) + 9 (codecopy+return sequence)
     let constructor_prefix: Vec<u8> = vec![
-        0x60, total, // PUSH1 total
-        0x60, 0x00,  // PUSH1 0x00 (slot)
-        0x55,        // SSTORE
-        0x60, runtime_len, // PUSH1 runtime_size
-        0x60, 0x09,  // PUSH1 runtime_offset (immediately after these 9 bytes)
-        0x60, 0x00,  // PUSH1 mem_offset (0)
-        0x39,        // CODECOPY
-        0x60, runtime_len, // PUSH1 runtime_size
-        0x60, 0x00,       // PUSH1 mem_offset
-        0xF3,             // RETURN
+        0x60,
+        total, // PUSH1 total
+        0x60,
+        0x00, // PUSH1 0x00 (slot)
+        0x55, // SSTORE
+        0x60,
+        runtime_len, // PUSH1 runtime_size
+        0x60,
+        0x09, // PUSH1 runtime_offset (immediately after these 9 bytes)
+        0x60,
+        0x00, // PUSH1 mem_offset (0)
+        0x39, // CODECOPY
+        0x60,
+        runtime_len, // PUSH1 runtime_size
+        0x60,
+        0x00, // PUSH1 mem_offset
+        0xF3, // RETURN
     ];
 
     let mut init_code = constructor_prefix.clone();
@@ -81,7 +88,9 @@ fn erc20_minimal_fallback_test() {
     deploy_payload.extend_from_slice(&init_code);
 
     let executor = FrontierEvmExecutor;
-    let deploy_res = executor.execute(&deploy_payload, &[0u8;20], &EvmConfig::default()).expect("deploy should not error");
+    let deploy_res = executor
+        .execute(&deploy_payload, &[0u8; 20], &EvmConfig::default())
+        .expect("deploy should not error");
     assert!(deploy_res.success);
 
     // Call the contract: since we don't know the created address easily here,
@@ -91,7 +100,7 @@ fn erc20_minimal_fallback_test() {
 
     // To approximate, we will re-deploy the same init code and then call the
     // contract at zero address (some test setups map CREATE to predictable addresses)
-    if let Ok(res2) = executor.execute(&deploy_payload, &[0u8;20], &EvmConfig::default()) {
+    if let Ok(res2) = executor.execute(&deploy_payload, &[0u8; 20], &EvmConfig::default()) {
         assert!(res2.success);
         // Call the deployed code by doing a CALL to the to=zero address (best-effort)
         let mut call_payload = vec![0x00u8];
@@ -99,11 +108,13 @@ fn erc20_minimal_fallback_test() {
         call_payload.extend_from_slice(&0u64.to_be_bytes());
         call_payload.extend_from_slice(&[]);
 
-        let call_res = executor.execute(&call_payload, &[0u8;20], &EvmConfig::default()).unwrap();
+        let call_res = executor
+            .execute(&call_payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         // call may succeed and return 32-byte value equal to total (0x42)
         if call_res.success && !call_res.output.is_empty() {
             // parse last byte
-            let val = call_res.output[call_res.output.len()-1];
+            let val = call_res.output[call_res.output.len() - 1];
             assert_eq!(val, total);
         }
     }

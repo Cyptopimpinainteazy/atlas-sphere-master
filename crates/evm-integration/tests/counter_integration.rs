@@ -1,6 +1,6 @@
 #![cfg(feature = "frontier-executor")]
 
-use atlas_evm_integration::{EvmConfig, FrontierEvmExecutor, EvmExecutor};
+use atlas_evm_integration::{EvmConfig, EvmExecutor, FrontierEvmExecutor};
 
 // Counter contract compiled bytecode (simplified):
 // This is a mock Counter contract that stores count at storage slot 0
@@ -25,8 +25,8 @@ fn test_counter_deployment() {
     let bytecode = vec![
         0x60, 0x00, // PUSH1 0x00 (value)
         0x60, 0x00, // PUSH1 0x00 (slot)
-        0x55,       // SSTORE
-        0x00,       // STOP
+        0x55, // SSTORE
+        0x00, // STOP
     ];
 
     let mut payload = vec![0x01]; // CREATE opcode
@@ -35,10 +35,13 @@ fn test_counter_deployment() {
 
     let result = executor.execute(&payload, &[0xAAu8; 20], &EvmConfig::default());
     assert!(result.is_ok());
-    
+
     let result = result.unwrap();
     assert!(result.success, "Counter deployment should succeed");
-    assert_ne!(result.state_root, [0u8; 32], "State root should be non-zero after deployment");
+    assert_ne!(
+        result.state_root, [0u8; 32],
+        "State root should be non-zero after deployment"
+    );
     assert!(result.gas_used > 0, "Gas should be consumed");
 }
 
@@ -51,23 +54,28 @@ fn test_counter_increment() {
     // Load slot 0, add 1, store back to slot 0
     let bytecode = vec![
         0x60, 0x00, // PUSH1 0x00 (slot)
-        0x54,       // SLOAD (load value from slot 0)
+        0x54, // SLOAD (load value from slot 0)
         0x60, 0x01, // PUSH1 0x01 (1)
-        0x01,       // ADD
+        0x01, // ADD
         0x60, 0x00, // PUSH1 0x00 (slot)
-        0x55,       // SSTORE (store back)
+        0x55, // SSTORE (store back)
         0x60, 0x00, // PUSH1 0x00 (offset)
         0x60, 0x00, // PUSH1 0x00 (size)
-        0xF3,       // RETURN
+        0xF3, // RETURN
     ];
 
     let mut payload = vec![0x01]; // CREATE
     payload.extend_from_slice(&0u64.to_be_bytes());
     payload.extend_from_slice(&bytecode);
 
-    let result = executor.execute(&payload, &[0xBBu8; 20], &EvmConfig::default()).unwrap();
+    let result = executor
+        .execute(&payload, &[0xBBu8; 20], &EvmConfig::default())
+        .unwrap();
     assert!(result.success);
-    assert_ne!(result.state_root, [0u8; 32], "State root should reflect increment");
+    assert_ne!(
+        result.state_root, [0u8; 32],
+        "State root should reflect increment"
+    );
 }
 
 /// Test: Counter view function (no state change)
@@ -79,20 +87,25 @@ fn test_counter_get_count() {
     // Load slot 0 and return it
     let bytecode = vec![
         0x60, 0x00, // PUSH1 0x00 (slot)
-        0x54,       // SLOAD
+        0x54, // SLOAD
         0x60, 0x20, // PUSH1 0x20 (return size in bytes)
-        0x00,       // PUSH1 0x00 (return offset)
-        0xF3,       // RETURN
+        0x00, // PUSH1 0x00 (return offset)
+        0xF3, // RETURN
     ];
 
     let mut payload = vec![0x01]; // CREATE
     payload.extend_from_slice(&0u64.to_be_bytes());
     payload.extend_from_slice(&bytecode);
 
-    let result = executor.execute(&payload, &[0xCCu8; 20], &EvmConfig::default()).unwrap();
+    let result = executor
+        .execute(&payload, &[0xCCu8; 20], &EvmConfig::default())
+        .unwrap();
     assert!(result.success);
     // View functions should have minimal gas usage
-    assert!(result.gas_used < 100_000, "View function should use less gas");
+    assert!(
+        result.gas_used < 100_000,
+        "View function should use less gas"
+    );
 }
 
 /// Test: Gas metering for counter operations
@@ -103,21 +116,21 @@ fn test_counter_gas_metering() {
     // Simple operation: PUSH, STOP
     let bytecode_simple = vec![
         0x60, 0x00, // PUSH1 0x00
-        0x00,       // STOP
+        0x00, // STOP
     ];
 
     // Complex operation: multiple storage ops
     let bytecode_complex = vec![
         0x60, 0x42, // PUSH1 0x42
         0x60, 0x00, // PUSH1 0x00
-        0x55,       // SSTORE (20,000 gas)
+        0x55, // SSTORE (20,000 gas)
         0x60, 0x00, // PUSH1 0x00
-        0x54,       // SLOAD (2,100 gas for cold)
+        0x54, // SLOAD (2,100 gas for cold)
         0x60, 0x01, // PUSH1 0x01
-        0x01,       // ADD
+        0x01, // ADD
         0x60, 0x01, // PUSH1 0x01
-        0x55,       // SSTORE
-        0x00,       // STOP
+        0x55, // SSTORE
+        0x00, // STOP
     ];
 
     let mut simple_payload = vec![0x01];
@@ -128,12 +141,18 @@ fn test_counter_gas_metering() {
     complex_payload.extend_from_slice(&0u64.to_be_bytes());
     complex_payload.extend_from_slice(&bytecode_complex);
 
-    let simple_result = executor.execute(&simple_payload, &[0xAAu8; 20], &EvmConfig::default()).unwrap();
-    let complex_result = executor.execute(&complex_payload, &[0xBBu8; 20], &EvmConfig::default()).unwrap();
+    let simple_result = executor
+        .execute(&simple_payload, &[0xAAu8; 20], &EvmConfig::default())
+        .unwrap();
+    let complex_result = executor
+        .execute(&complex_payload, &[0xBBu8; 20], &EvmConfig::default())
+        .unwrap();
 
-    assert!(complex_result.gas_used > simple_result.gas_used, 
-            "Complex operations should use more gas");
-    
+    assert!(
+        complex_result.gas_used > simple_result.gas_used,
+        "Complex operations should use more gas"
+    );
+
     // Gas used should be reasonable (>0 and < limit)
     assert!(simple_result.gas_used > 0);
     assert!(complex_result.gas_used > 0);
@@ -151,24 +170,29 @@ fn test_counter_with_events() {
     let bytecode = vec![
         0x60, 0x01, // PUSH1 0x01 (data)
         0x60, 0x00, // PUSH1 0x00 (slot)
-        0x55,       // SSTORE
+        0x55, // SSTORE
         0x60, 0x00, // PUSH1 0x00 (data offset)
         0x60, 0x00, // PUSH1 0x00 (data size)
         0x60, 0x01, // PUSH1 0x01 (num topics)
-        0xA1,       // LOG1 (emit event with 1 topic)
+        0xA1, // LOG1 (emit event with 1 topic)
         0x60, 0x00, // PUSH1 0x00
         0x60, 0x00, // PUSH1 0x00
-        0xF3,       // RETURN
+        0xF3, // RETURN
     ];
 
     let mut payload = vec![0x01];
     payload.extend_from_slice(&0u64.to_be_bytes());
     payload.extend_from_slice(&bytecode);
 
-    let result = executor.execute(&payload, &[0xDDu8; 20], &EvmConfig::default()).unwrap();
+    let result = executor
+        .execute(&payload, &[0xDDu8; 20], &EvmConfig::default())
+        .unwrap();
     assert!(result.success);
-    assert!(!result.logs.is_empty(), "Should have emitted at least one log");
-    
+    assert!(
+        !result.logs.is_empty(),
+        "Should have emitted at least one log"
+    );
+
     // Verify log structure
     let log = &result.logs[0];
     assert_eq!(log.address.len(), 20, "Log address should be 20 bytes");
@@ -183,19 +207,21 @@ fn test_counter_sequential_ops() {
     // First increment
     let bytecode = vec![
         0x60, 0x00, // PUSH1 0x00
-        0x54,       // SLOAD
+        0x54, // SLOAD
         0x60, 0x01, // PUSH1 0x01
-        0x01,       // ADD
+        0x01, // ADD
         0x60, 0x00, // PUSH1 0x00
-        0x55,       // SSTORE
-        0x00,       // STOP
+        0x55, // SSTORE
+        0x00, // STOP
     ];
 
     let mut payload1 = vec![0x01];
     payload1.extend_from_slice(&0u64.to_be_bytes());
     payload1.extend_from_slice(&bytecode);
 
-    let result1 = executor.execute(&payload1, &[0xEEu8; 20], &EvmConfig::default()).unwrap();
+    let result1 = executor
+        .execute(&payload1, &[0xEEu8; 20], &EvmConfig::default())
+        .unwrap();
     assert!(result1.success);
     let state_root_1 = result1.state_root;
 
@@ -204,7 +230,9 @@ fn test_counter_sequential_ops() {
     payload2.extend_from_slice(&0u64.to_be_bytes());
     payload2.extend_from_slice(&bytecode);
 
-    let result2 = executor.execute(&payload2, &[0xEEu8; 20], &EvmConfig::default()).unwrap();
+    let result2 = executor
+        .execute(&payload2, &[0xEEu8; 20], &EvmConfig::default())
+        .unwrap();
     assert!(result2.success);
     let state_root_2 = result2.state_root;
 
@@ -212,7 +240,10 @@ fn test_counter_sequential_ops() {
     assert_ne!(state_root_1, [0u8; 32]);
     assert_ne!(state_root_2, [0u8; 32]);
     // State roots for same operation from same caller should be identical (deterministic)
-    assert_eq!(state_root_1, state_root_2, "Sequential identical operations should produce same state root");
+    assert_eq!(
+        state_root_1, state_root_2,
+        "Sequential identical operations should produce same state root"
+    );
 }
 
 /// Test: Counter overflow safety
@@ -224,17 +255,19 @@ fn test_counter_saturating_behavior() {
     let bytecode = vec![
         0x60, 0xFF, // PUSH1 0xFF
         0x60, 0xFF, // PUSH1 0xFF
-        0x01,       // ADD (should result in 0x1FE, no saturation in EVM)
+        0x01, // ADD (should result in 0x1FE, no saturation in EVM)
         0x60, 0x00, // PUSH1 0x00
-        0x55,       // SSTORE
-        0x00,       // STOP
+        0x55, // SSTORE
+        0x00, // STOP
     ];
 
     let mut payload = vec![0x01];
     payload.extend_from_slice(&0u64.to_be_bytes());
     payload.extend_from_slice(&bytecode);
 
-    let result = executor.execute(&payload, &[0xFFu8; 20], &EvmConfig::default()).unwrap();
+    let result = executor
+        .execute(&payload, &[0xFFu8; 20], &EvmConfig::default())
+        .unwrap();
     assert!(result.success, "ADD should not overflow in EVM");
 }
 
@@ -246,8 +279,8 @@ fn test_counter_out_of_gas() {
     let bytecode = vec![
         0x60, 0x01, // PUSH1 0x01
         0x60, 0x00, // PUSH1 0x00
-        0x55,       // SSTORE (expensive operation)
-        0x00,       // STOP
+        0x55, // SSTORE (expensive operation)
+        0x00, // STOP
     ];
 
     let mut payload = vec![0x01];
@@ -271,7 +304,7 @@ fn test_counter_revert() {
     let bytecode = vec![
         0x60, 0x00, // PUSH1 0x00
         0x60, 0x00, // PUSH1 0x00
-        0xFD,       // REVERT
+        0xFD, // REVERT
     ];
 
     let mut payload = vec![0x01];
@@ -290,8 +323,8 @@ fn test_multiple_counter_instances() {
     let bytecode = vec![
         0x60, 0x42, // PUSH1 0x42
         0x60, 0x00, // PUSH1 0x00
-        0x55,       // SSTORE
-        0x00,       // STOP
+        0x55, // SSTORE
+        0x00, // STOP
     ];
 
     let mut payload1 = vec![0x01];
@@ -302,8 +335,12 @@ fn test_multiple_counter_instances() {
     payload2.extend_from_slice(&0u64.to_be_bytes());
     payload2.extend_from_slice(&bytecode);
 
-    let result1 = executor.execute(&payload1, &[0x11u8; 20], &EvmConfig::default()).unwrap();
-    let result2 = executor.execute(&payload2, &[0x22u8; 20], &EvmConfig::default()).unwrap();
+    let result1 = executor
+        .execute(&payload1, &[0x11u8; 20], &EvmConfig::default())
+        .unwrap();
+    let result2 = executor
+        .execute(&payload2, &[0x22u8; 20], &EvmConfig::default())
+        .unwrap();
 
     assert!(result1.success);
     assert!(result2.success);
@@ -317,7 +354,7 @@ fn test_gas_calculation_accuracy() {
     let executor = FrontierEvmExecutor;
 
     let config = EvmConfig::default();
-    
+
     // Test with identity precompile (cheap, predictable gas)
     // Call identity precompile (address 0x04) with 32 bytes input
     // Expected gas: 15 + 3*((32+31)/32) = 15 + 3 = 18 wei

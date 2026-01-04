@@ -2,6 +2,7 @@
 
 use crate::config::SwarmConfig;
 use crate::error::{SwarmError, SwarmResult};
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -208,7 +209,8 @@ impl SwarmNode {
     pub fn new(config: &SwarmConfig, gpu: GpuCapabilities) -> SwarmResult<Self> {
         // Generate a random key for now - in production this would be loaded from keypair_path
         let mut public_key = [0u8; 32];
-        getrandom::getrandom(&mut public_key).unwrap_or_default();
+        let mut rng = rand::rngs::OsRng;
+        rng.fill_bytes(&mut public_key);
 
         // Extract port from listen address or use default
         let listen_port = config
@@ -294,6 +296,7 @@ impl NodeRegistry {
             nodes: HashMap::new(),
             by_status: HashMap::new(),
             by_region: HashMap::new(),
+            pub_keys: HashMap::new(),
         }
     }
 

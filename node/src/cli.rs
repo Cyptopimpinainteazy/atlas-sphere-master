@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use sc_cli::{
-    ChainSpec, CheckBlockCmd, ExportBlocksCmd, ExportStateCmd, ImportBlocksCmd,
-    PurgeChainCmd, RevertCmd, RunCmd, SubstrateCli,
+    ChainSpec, CheckBlockCmd, ExportBlocksCmd, ExportStateCmd, ImportBlocksCmd, PurgeChainCmd,
+    RevertCmd, RunCmd, SubstrateCli,
 };
 use std::path::PathBuf;
 

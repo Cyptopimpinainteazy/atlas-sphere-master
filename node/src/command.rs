@@ -18,7 +18,10 @@ pub fn run() -> CliResult<()> {
             })?;
 
             runner.sync_run(|config| {
-                info!("Building Atlas Sphere chain specification (raw: {})", cmd.raw);
+                info!(
+                    "Building Atlas Sphere chain specification (raw: {})",
+                    cmd.raw
+                );
                 cmd.run(config.chain_spec, config.network).map_err(|e| {
                     error!("`build-spec` command failed: {e}");
                     e
@@ -161,10 +164,11 @@ pub fn run() -> CliResult<()> {
 
             runner.sync_run(|config| {
                 info!("Executing runtime benchmarks");
-                cmd.run::<Block, AtlasSphereExecutorDispatch>(config).map_err(|e| {
-                    error!("`benchmark` command failed: {e}");
-                    e
-                })
+                cmd.run::<Block, AtlasSphereExecutorDispatch>(config)
+                    .map_err(|e| {
+                        error!("`benchmark` command failed: {e}");
+                        e
+                    })
             })
         }
         #[cfg(feature = "try-runtime")]

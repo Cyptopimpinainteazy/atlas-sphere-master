@@ -33,8 +33,8 @@
 //! assert!(sphincs::verify(&pk, message, &signature));
 //! ```
 
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// Note: Specific dead_code allowances added for individual modules as needed
+// Removed blanket allow(dead_code) to improve code quality
 
 pub mod blake3ext;
 pub mod dilithium;

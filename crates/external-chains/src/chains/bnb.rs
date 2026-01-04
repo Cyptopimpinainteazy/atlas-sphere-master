@@ -11,7 +11,7 @@ use sp_std::vec::Vec;
 /// BNB Smart Chain adapter
 pub struct BnbAdapter {
     config: ChainConfig,
-    #[allow(dead_code)]
+    /// Transaction nonce tracking (TODO: implement nonce management)
     nonce: u64,
 }
 

@@ -1,7 +1,10 @@
 use asga_receipts::{Attestation, AttestationScheme, DomainId, EvmReceipt, ReceiptHeader};
-use tiny_keccak::{Hasher, Keccak};
-use secp256k1::{recovery::RecoverableSignature, recovery::RecoveryId, Message, PublicKey, Secp256k1, SecretKey};
+use parity_scale_codec::Encode;
+use secp256k1::{
+    recovery::RecoverableSignature, recovery::RecoveryId, Message, PublicKey, Secp256k1, SecretKey,
+};
 use sp_core::sr25519;
+use tiny_keccak::{Hasher, Keccak};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ValidationError {
@@ -27,7 +30,11 @@ fn keccak256(bytes: &[u8]) -> [u8; 32] {
 /// Steps:
 /// 1. Compute keccak256(header.encode() || payload.encode())
 /// 2. Recover pubkey from signature and compare compressed pubkey bytes to `header.signer`.
-pub fn verify_evm_signature(header: &ReceiptHeader, evm: &EvmReceipt, signature: &[u8]) -> Result<(), ValidationError> {
+pub fn verify_evm_signature(
+    header: &ReceiptHeader,
+    evm: &EvmReceipt,
+    signature: &[u8],
+) -> Result<(), ValidationError> {
     if signature.len() != 65 {
         return Err(ValidationError::InvalidSignature);
     }
@@ -39,21 +46,27 @@ pub fn verify_evm_signature(header: &ReceiptHeader, evm: &EvmReceipt, signature:
     let msg_hash = keccak256(&msg_bytes);
 
     // secp256k1 expects a 32-byte message
-    let msg = Message::from_slice(&msg_hash).map_err(|_| ValidationError::SignatureRecoverFailed)?;
+    let msg =
+        Message::from_slice(&msg_hash).map_err(|_| ValidationError::SignatureRecoverFailed)?;
 
     let mut compact = [0u8; 64];
     compact.copy_from_slice(&signature[0..64]);
     let v = signature[64];
     // normalize v: accept 27/28 or 0/1
     let recid = match v {
-        27 | 28 => RecoveryId::from_i32((v - 27) as i32).map_err(|_| ValidationError::InvalidSignature)?,
+        27 | 28 => {
+            RecoveryId::from_i32((v - 27) as i32).map_err(|_| ValidationError::InvalidSignature)?
+        }
         0 | 1 => RecoveryId::from_i32(v as i32).map_err(|_| ValidationError::InvalidSignature)?,
         _ => return Err(ValidationError::InvalidSignature),
     };
 
-    let secp = Secp256k1::new();
-    let rec_sig = RecoverableSignature::from_compact(&compact, recid).map_err(|_| ValidationError::SignatureRecoverFailed)?;
-    let pubkey = secp.recover(&msg, &rec_sig).map_err(|_| ValidationError::SignatureRecoverFailed)?;
+    let rec_sig = RecoverableSignature::from_compact(&compact, recid)
+        .map_err(|_| ValidationError::SignatureRecoverFailed)?;
+    // Recover pubkey directly from the recoverable signature
+    let pubkey = rec_sig
+        .recover(&msg)
+        .map_err(|_| ValidationError::SignatureRecoverFailed)?;
 
     // Compare compressed pubkey (33 bytes) to header.signer
     let comp = pubkey.serialize_compressed();
@@ -68,7 +81,10 @@ pub fn verify_evm_signature(header: &ReceiptHeader, evm: &EvmReceipt, signature:
 }
 
 /// Verify SR25519 attestation over provided payload bytes.
-pub fn verify_sr25519_attestation(att: &Attestation, payload: &[u8]) -> Result<(), ValidationError> {
+pub fn verify_sr25519_attestation(
+    att: &Attestation,
+    payload: &[u8],
+) -> Result<(), ValidationError> {
     if att.scheme != AttestationScheme::Sr25519 {
         return Err(ValidationError::InvalidAttestation);
     }
@@ -84,8 +100,8 @@ pub fn verify_sr25519_attestation(att: &Attestation, payload: &[u8]) -> Result<(
 
     let pubkey = sr25519::Public::from_raw(att.attester_pubkey);
 
-    // verify using verify method
-    if !signature.verify(payload, &pubkey) {
+    // verify using Pair::verify
+    if !sr25519::Pair::verify(&signature, payload, &pubkey) {
         return Err(ValidationError::InvalidAttestation);
     }
 
@@ -93,7 +109,12 @@ pub fn verify_sr25519_attestation(att: &Attestation, payload: &[u8]) -> Result<(
 }
 
 /// Basic EVM receipt validation including optional signature verification.
-pub fn validate_evm_receipt(header: &ReceiptHeader, evm: &EvmReceipt, min_confirmations: u32, signature: Option<&[u8]>) -> Result<(), ValidationError> {
+pub fn validate_evm_receipt(
+    header: &ReceiptHeader,
+    evm: &EvmReceipt,
+    min_confirmations: u32,
+    signature: Option<&[u8]>,
+) -> Result<(), ValidationError> {
     if header.domain_id != DomainId::Evm {
         return Err(ValidationError::WrongDomain);
     }
@@ -200,7 +221,7 @@ mod tests {
             amount: 100u128,
             asset_id: [2u8; 32],
             timestamp: 1_700_000_000u64,
-            signer: [3u8; 33],
+            signer: vec![3u8; 33],
         };
 
         let evm = EvmReceipt {
@@ -242,7 +263,7 @@ mod tests {
             amount: 100u128,
             asset_id: [2u8; 32],
             timestamp: 1_700_000_000u64,
-            signer: [0u8; 33],
+            signer: vec![0u8; 33],
         };
 
         let evm = EvmReceipt {

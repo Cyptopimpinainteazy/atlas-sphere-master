@@ -77,11 +77,11 @@ pub use service::*;
 /// Run the Atlas Sphere node
 #[cfg(feature = "cli")]
 pub fn run() -> Result<(), sc_cli::Error> {
-	command::run()
+    command::run()
 }
 
 /// Run the Atlas Sphere node (no-cli fallback)
 #[cfg(not(feature = "cli"))]
 pub fn run() -> Result<(), Box<dyn std::error::Error>> {
-	Err("CLI feature not enabled".into())
+    Err("CLI feature not enabled".into())
 }

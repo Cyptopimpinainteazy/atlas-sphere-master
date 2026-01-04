@@ -1,11 +1,30 @@
-// SHIP GATE: Module B — Hard timeout enforcement for node execution
-// Tasks MUST have max_time enforced; timeout = auto-fail, no payment
-//
-// SHIP GATE: Module B — Node Execution Bounded
-// - Node execution has hard timeout (max_time)
-// - Node cannot over-report resource usage (watchdog validation mandatory)
-// - Watchdog validation required before rewards
-// - Node cannot over-report work and get paid
+//! # Timeout Enforcer
+//!
+//! Hard timeout enforcement for GPU node execution.
+//!
+//! ## Overview
+//!
+//! This module implements critical safety mechanisms to prevent nodes from:
+//! - Running jobs indefinitely
+//! - Claiming work was done when execution hung
+//! - Getting paid for incomplete or failed work
+//!
+//! ## Design
+//!
+//! ### SHIP GATE: Module B — Node Execution Bounded
+//! - Node execution has hard timeout (max_time)
+//! - Node cannot over-report resource usage (watchdog validation mandatory)
+//! - Watchdog validation required before rewards
+//! - Node cannot over-report work and get paid
+//!
+//! ## Key Concepts
+//!
+//! ### ExecutionDeadline
+//! Tracks the deadline for a single job execution. Once a deadline is exceeded,
+//! the job should be immediately terminated and no payment should be issued.
+//!
+//! ### TimeoutEnforcer
+//! Utility struct for checking timeout status and retrieving remaining execution time.
 
 use std::time::{Duration, SystemTime};
 

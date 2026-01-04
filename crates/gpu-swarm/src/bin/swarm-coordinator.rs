@@ -8,6 +8,7 @@ use gpu_swarm::{
     network::{NetworkConfig, NetworkManager},
     node::NodeId,
 };
+use rand::{rngs::OsRng, RngCore};
 use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -34,10 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate coordinator ID
     let coordinator_id: NodeId = {
         let mut id = [0u8; 32];
-        if let Err(e) = getrandom::getrandom(&mut id) {
-            eprintln!("Failed to generate random ID: {}", e);
-            std::process::exit(1);
-        }
+        OsRng.fill_bytes(&mut id);
         id
     };
     tracing::info!("Coordinator ID: {}", hex::encode(&coordinator_id[..16]));

@@ -4,6 +4,7 @@
 //! ensuring consistency and type safety across different modules.
 
 use parity_scale_codec::{Decode, Encode};
+use rand::{rngs::OsRng, RngCore};
 use scale_info::TypeInfo;
 use sp_core::{H160, H256, U256};
 use sp_std::vec::Vec;
@@ -17,7 +18,7 @@ impl PositionId {
     /// Create a new random position ID
     pub fn new() -> Self {
         let mut bytes = [0u8; 32];
-        getrandom::getrandom(&mut bytes).expect("Failed to generate random bytes");
+        OsRng.fill_bytes(&mut bytes);
         Self(bytes)
     }
 

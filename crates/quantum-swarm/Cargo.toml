@@ -81,3 +81,7 @@ approx = "0.5"
 [[bench]]
 name = "quantum_bench"
 harness = false
+
+[[bench]]
+name = "swarm_bench"
+harness = false
