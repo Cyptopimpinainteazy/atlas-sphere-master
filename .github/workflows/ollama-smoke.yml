@@ -44,6 +44,35 @@ jobs:
           name: llm-output
           path: docs/ollama-summary.md
 
+      - name: Make test executable
+        run: chmod +x tools/ollama/test_generate_md.sh || true
+
+      - name: Run generate_md integration test
+        run: |
+          mkdir -p test-artifacts
+          ./tools/ollama/test_generate_md.sh 2>&1 | tee test-artifacts/test_generate_md.log
+          echo $? > test-artifacts/test_generate_md.exitcode
+
+      - name: Evaluate scheduled validation result
+        env:
+          VALIDATE_ON_SCHEDULE: ${{ secrets.OLLAMA_VALIDATE_ON_SCHEDULE || 'true' }}
+        run: |
+          EXITCODE=$(cat test-artifacts/test_generate_md.exitcode)
+          echo "generate_md test exit code: $EXITCODE"
+          if [ "$VALIDATE_ON_SCHEDULE" = "true" ] && [ "$EXITCODE" -ne 0 ]; then
+            echo "Scheduled validation requires passing tests; failing job"
+            exit 1
+          fi
+          if [ "$EXITCODE" -ne 0 ]; then
+            echo "Test failed but continuing because validation is not required"
+          fi
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-test-logs
+          path: test-artifacts
+
       - name: Annotate PR with LLM output
         if: github.event_name == 'pull_request' && env.LLM_ANNOTATE == 'true'
         uses: actions/github-script@v6
