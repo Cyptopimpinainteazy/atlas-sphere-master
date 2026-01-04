@@ -29,8 +29,8 @@
 //! - Example: `cargo test -p atlas-evm-integration --features "frontier-executor full-precompiles"`
 
 use sp_core::H160;
-use sp_std::vec::Vec;
 use sp_std::vec;
+use sp_std::vec::Vec;
 
 /// Phase 2: EVM State Integration
 /// Account state management, contract code storage, and state database
@@ -52,7 +52,7 @@ pub enum EvmError {
     InvalidState,
     /// Other execution error
     ExecutionFailed(u32),
-} 
+}
 
 /// Represents the result of EVM execution
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -98,11 +98,11 @@ pub struct EvmConfig {
 impl Default for EvmConfig {
     fn default() -> Self {
         Self {
-            gas_limit: 21_000_000,      // ~20M gas per block
-            gas_price: 1,                // 1 wei
+            gas_limit: 21_000_000, // ~20M gas per block
+            gas_price: 1,          // 1 wei
             block_number: 0,
             block_timestamp: 0,
-            chain_id: 42,                // Atlas Sphere default chain ID
+            chain_id: 42, // Atlas Sphere default chain ID
         }
     }
 }
@@ -238,9 +238,13 @@ impl EvmExecutor for FrontierEvmExecutor {
                     Vec::new(),
                 )
             }
-            PayloadKind::Create => {
-                executor.transact_create(caller_h160, value, input_or_code.to_vec(), gas_limit, Vec::new())
-            }
+            PayloadKind::Create => executor.transact_create(
+                caller_h160,
+                value,
+                input_or_code.to_vec(),
+                gas_limit,
+                Vec::new(),
+            ),
         };
 
         let used = executor.used_gas();
@@ -260,11 +264,19 @@ impl EvmExecutor for FrontierEvmExecutor {
                 if log.topics.len() > 4 {
                     // Should not happen for valid EVM execution, but avoid
                     // constructing oversized receipts.
-                    return EvmLog { address, topics: Vec::new(), data: Vec::new() };
+                    return EvmLog {
+                        address,
+                        topics: Vec::new(),
+                        data: Vec::new(),
+                    };
                 }
                 // Avoid accidental huge log payloads in receipts.
                 if log.data.len() > 64 * 1024 {
-                    return EvmLog { address, topics: Vec::new(), data: Vec::new() };
+                    return EvmLog {
+                        address,
+                        topics: Vec::new(),
+                        data: Vec::new(),
+                    };
                 }
 
                 let topics = log
@@ -290,9 +302,8 @@ impl EvmExecutor for FrontierEvmExecutor {
         let state_root = state_db.compute_state_root();
 
         let (success, output) = match &exit_reason {
-            ExitReason::Succeed(ExitSucceed::Stopped) | ExitReason::Succeed(ExitSucceed::Returned) => {
-                (true, return_value)
-            }
+            ExitReason::Succeed(ExitSucceed::Stopped)
+            | ExitReason::Succeed(ExitSucceed::Returned) => (true, return_value),
             ExitReason::Revert(ExitRevert::Reverted) => {
                 // Include revert return data (reason) when available
                 return Err(EvmError::ExecutionReverted(Some(return_value.clone())));
@@ -344,9 +355,9 @@ impl EvmExecutor for FrontierEvmExecutor {
         // Optional static-ish gas estimation (native only).
         #[cfg(feature = "std")]
         {
+            use crate::state::{EvmStateDb, FrontierStateBackend};
             use ethereum_types::U256;
             use evm::executor::stack::{MemoryStackState, StackExecutor, StackSubstateMetadata};
-            use crate::state::{EvmStateDb, FrontierStateBackend};
 
             // Conservative cap for validation-time dry runs.
             const DRY_RUN_GAS_LIMIT: u64 = 50_000_000;
@@ -413,7 +424,9 @@ enum PayloadKind {
 
 /// Parse EVM payload format - reserved for future use in custom execution paths
 #[allow(dead_code)]
-fn parse_payload(payload: &[u8]) -> EvmResult<(PayloadKind, Option<ethereum_types::H160>, u64, &[u8])> {
+fn parse_payload(
+    payload: &[u8],
+) -> EvmResult<(PayloadKind, Option<ethereum_types::H160>, u64, &[u8])> {
     use ethereum_types::H160 as EthH160;
     if payload.is_empty() {
         return Err(EvmError::InvalidPayload);
@@ -428,7 +441,12 @@ fn parse_payload(payload: &[u8]) -> EvmResult<(PayloadKind, Option<ethereum_type
             let mut value_bytes = [0u8; 8];
             value_bytes.copy_from_slice(&payload[21..29]);
             let value = u64::from_be_bytes(value_bytes);
-            Ok((PayloadKind::Call, Some(EthH160::from(to_bytes)), value, &payload[29..]))
+            Ok((
+                PayloadKind::Call,
+                Some(EthH160::from(to_bytes)),
+                value,
+                &payload[29..],
+            ))
         }
         0x01 => {
             if payload.len() < 1 + 8 {
@@ -488,7 +506,10 @@ pub struct GasCalculator {
 
 impl GasCalculator {
     pub fn new(gas_limit: u64) -> Self {
-        Self { gas_limit, gas_used: 0 }
+        Self {
+            gas_limit,
+            gas_used: 0,
+        }
     }
 
     pub fn finalize(mut self, remaining_gas: u64) -> Self {
@@ -508,8 +529,8 @@ mod precompiles {
     use evm::executor::stack::{
         IsPrecompileResult, PrecompileFailure, PrecompileHandle, PrecompileOutput, PrecompileSet,
     };
-    use sha2::{Digest as _, Sha256};
     use ripemd::Ripemd160;
+    use sha2::{Digest as _, Sha256};
 
     pub struct Precompiles;
 
@@ -564,28 +585,45 @@ mod precompiles {
     fn ensure_gas(gas_limit: Option<u64>, required: u64) -> Result<(), PrecompileFailure> {
         if let Some(limit) = gas_limit {
             if required > limit {
-                return Err(PrecompileFailure::Error { exit_status: evm::ExitError::OutOfGas });
+                return Err(PrecompileFailure::Error {
+                    exit_status: evm::ExitError::OutOfGas,
+                });
             }
         }
         Ok(())
     }
 
-    fn identity_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn identity_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         let cost = gas_cost_identity(input.len());
         ensure_gas(gas_limit, cost)?;
-        Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: input.to_vec() })
+        Ok(PrecompileOutput {
+            exit_status: evm::ExitSucceed::Returned,
+            output: input.to_vec(),
+        })
     }
 
-    fn sha256_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn sha256_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         let cost = gas_cost_sha256(input.len());
         ensure_gas(gas_limit, cost)?;
         let mut h = Sha256::new();
         h.update(input);
         let out = h.finalize();
-        Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out.to_vec() })
+        Ok(PrecompileOutput {
+            exit_status: evm::ExitSucceed::Returned,
+            output: out.to_vec(),
+        })
     }
 
-    fn ripemd160_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn ripemd160_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         let cost = gas_cost_ripemd160(input.len());
         ensure_gas(gas_limit, cost)?;
         let mut h = Ripemd160::new();
@@ -593,14 +631,23 @@ mod precompiles {
         let out = h.finalize();
         let mut padded = [0u8; 32];
         padded[12..32].copy_from_slice(&out);
-        Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: padded.to_vec() })
+        Ok(PrecompileOutput {
+            exit_status: evm::ExitSucceed::Returned,
+            output: padded.to_vec(),
+        })
     }
 
-    fn ecrecover_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn ecrecover_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         // Gas cost fixed at 3000
         ensure_gas(gas_limit, 3000)?;
         if input.len() < 128 {
-            return Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: Vec::new() });
+            return Ok(PrecompileOutput {
+                exit_status: evm::ExitSucceed::Returned,
+                output: Vec::new(),
+            });
         }
         let mut msg = [0u8; 32];
         msg.copy_from_slice(&input[0..32]);
@@ -616,7 +663,10 @@ mod precompiles {
             27 | 28 => rec_id - 27,
             0 | 1 => rec_id,
             _ => {
-                return Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: Vec::new() });
+                return Ok(PrecompileOutput {
+                    exit_status: evm::ExitSucceed::Returned,
+                    output: Vec::new(),
+                });
             }
         };
         let mut sig = [0u8; 65];
@@ -628,23 +678,35 @@ mod precompiles {
         let pubkey = match sp_io::crypto::secp256k1_ecdsa_recover(&sig, &msg) {
             Ok(pk) => pk,
             Err(_) => {
-                return Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: Vec::new() });
+                return Ok(PrecompileOutput {
+                    exit_status: evm::ExitSucceed::Returned,
+                    output: Vec::new(),
+                });
             }
         };
 
         let hash = sp_core::hashing::keccak_256(&pubkey);
         let mut out = [0u8; 32];
         out[12..32].copy_from_slice(&hash[12..32]);
-        Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out.to_vec() })
+        Ok(PrecompileOutput {
+            exit_status: evm::ExitSucceed::Returned,
+            output: out.to_vec(),
+        })
     }
 
     fn revert() -> Result<PrecompileOutput, PrecompileFailure> {
-        Err(PrecompileFailure::Revert { exit_status: evm::ExitRevert::Reverted, output: Vec::new() })
+        Err(PrecompileFailure::Revert {
+            exit_status: evm::ExitRevert::Reverted,
+            output: Vec::new(),
+        })
     }
 
     // --- 0x05: ModExp (EIP-198)
 
-    fn modexp_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn modexp_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         #[cfg(not(feature = "full-precompiles"))]
         {
             let _ = (input, gas_limit);
@@ -715,7 +777,9 @@ mod precompiles {
                         break;
                     }
                 }
-                let Some((i, b)) = first_nonzero else { return 0; };
+                let Some((i, b)) = first_nonzero else {
+                    return 0;
+                };
                 let remaining_bytes = (exp.len() - i) as u64;
                 let leading_bits = 8u64.saturating_sub((b as u64).leading_zeros() as u64);
                 (remaining_bytes.saturating_sub(1) * 8).saturating_add(leading_bits)
@@ -728,13 +792,19 @@ mod precompiles {
             ensure_gas(gas_limit, gas_cost)?;
 
             if mod_len == 0 {
-                return Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: Vec::new() });
+                return Ok(PrecompileOutput {
+                    exit_status: evm::ExitSucceed::Returned,
+                    output: Vec::new(),
+                });
             }
 
             let modulus = BigUint::from_bytes_be(&modu);
             if modulus.is_zero() {
                 // Per EIP-198: if modulus is zero, return zeroed output.
-                return Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: vec![0u8; mod_len] });
+                return Ok(PrecompileOutput {
+                    exit_status: evm::ExitSucceed::Returned,
+                    output: vec![0u8; mod_len],
+                });
             }
 
             let base_n = BigUint::from_bytes_be(&base);
@@ -751,13 +821,19 @@ mod precompiles {
                 out = padded;
             }
 
-            Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out })
+            Ok(PrecompileOutput {
+                exit_status: evm::ExitSucceed::Returned,
+                output: out,
+            })
         }
     }
 
     // --- 0x06..0x08: bn128 (EIP-196/EIP-197)
 
-    fn bn128_add_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn bn128_add_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         #[cfg(not(feature = "full-precompiles"))]
         {
             let _ = (input, gas_limit);
@@ -770,12 +846,21 @@ mod precompiles {
             let mut data = vec![0u8; 128];
             let take = core::cmp::min(128, input.len());
             data[..take].copy_from_slice(&input[..take]);
-            let out = bn128::add(&data).map_err(|_| PrecompileFailure::Revert { exit_status: evm::ExitRevert::Reverted, output: Vec::new() })?;
-            Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out })
+            let out = bn128::add(&data).map_err(|_| PrecompileFailure::Revert {
+                exit_status: evm::ExitRevert::Reverted,
+                output: Vec::new(),
+            })?;
+            Ok(PrecompileOutput {
+                exit_status: evm::ExitSucceed::Returned,
+                output: out,
+            })
         }
     }
 
-    fn bn128_mul_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn bn128_mul_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         #[cfg(not(feature = "full-precompiles"))]
         {
             let _ = (input, gas_limit);
@@ -788,12 +873,21 @@ mod precompiles {
             let mut data = vec![0u8; 96];
             let take = core::cmp::min(96, input.len());
             data[..take].copy_from_slice(&input[..take]);
-            let out = bn128::mul(&data).map_err(|_| PrecompileFailure::Revert { exit_status: evm::ExitRevert::Reverted, output: Vec::new() })?;
-            Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out })
+            let out = bn128::mul(&data).map_err(|_| PrecompileFailure::Revert {
+                exit_status: evm::ExitRevert::Reverted,
+                output: Vec::new(),
+            })?;
+            Ok(PrecompileOutput {
+                exit_status: evm::ExitSucceed::Returned,
+                output: out,
+            })
         }
     }
 
-    fn bn128_pairing_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn bn128_pairing_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         #[cfg(not(feature = "full-precompiles"))]
         {
             let _ = (input, gas_limit);
@@ -810,8 +904,14 @@ mod precompiles {
             let gas = 80_000u64.saturating_add(100_000u64.saturating_mul(k));
             ensure_gas(gas_limit, gas)?;
 
-            let out = bn128::pairing(input).map_err(|_| PrecompileFailure::Revert { exit_status: evm::ExitRevert::Reverted, output: Vec::new() })?;
-            Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out })
+            let out = bn128::pairing(input).map_err(|_| PrecompileFailure::Revert {
+                exit_status: evm::ExitRevert::Reverted,
+                output: Vec::new(),
+            })?;
+            Ok(PrecompileOutput {
+                exit_status: evm::ExitSucceed::Returned,
+                output: out,
+            })
         }
     }
 
@@ -843,8 +943,14 @@ mod precompiles {
             }
             let affine = point.into_affine();
             let mut out = vec![0u8; 64];
-            affine.x().to_big_endian(&mut out[0..32]).expect("32 bytes; qed");
-            affine.y().to_big_endian(&mut out[32..64]).expect("32 bytes; qed");
+            affine
+                .x()
+                .to_big_endian(&mut out[0..32])
+                .expect("32 bytes; qed");
+            affine
+                .y()
+                .to_big_endian(&mut out[32..64])
+                .expect("32 bytes; qed");
             out
         }
 
@@ -860,12 +966,14 @@ mod precompiles {
             let p1 = if x1.is_zero() && y1.is_zero() {
                 G1::zero()
             } else {
-                G1::from_affine(substrate_bn::AffineG1::new(x1, y1).map_err(|_| ())?).map_err(|_| ())?
+                G1::from_affine(substrate_bn::AffineG1::new(x1, y1).map_err(|_| ())?)
+                    .map_err(|_| ())?
             };
             let p2 = if x2.is_zero() && y2.is_zero() {
                 G1::zero()
             } else {
-                G1::from_affine(substrate_bn::AffineG1::new(x2, y2).map_err(|_| ())?).map_err(|_| ())?
+                G1::from_affine(substrate_bn::AffineG1::new(x2, y2).map_err(|_| ())?)
+                    .map_err(|_| ())?
             };
 
             Ok(encode_g1(p1 + p2))
@@ -882,7 +990,8 @@ mod precompiles {
             let p = if x.is_zero() && y.is_zero() {
                 G1::zero()
             } else {
-                G1::from_affine(substrate_bn::AffineG1::new(x, y).map_err(|_| ())?).map_err(|_| ())?
+                G1::from_affine(substrate_bn::AffineG1::new(x, y).map_err(|_| ())?)
+                    .map_err(|_| ())?
             };
 
             Ok(encode_g1(p * s))
@@ -912,7 +1021,8 @@ mod precompiles {
                 let a = if ax.is_zero() && ay.is_zero() {
                     G1::zero()
                 } else {
-                    G1::from_affine(substrate_bn::AffineG1::new(ax, ay).map_err(|_| ())?).map_err(|_| ())?
+                    G1::from_affine(substrate_bn::AffineG1::new(ax, ay).map_err(|_| ())?)
+                        .map_err(|_| ())?
                 };
 
                 let bx = Fq2::new(bx_re, bx_im);
@@ -920,7 +1030,8 @@ mod precompiles {
                 let b = if bx.is_zero() && by.is_zero() {
                     G2::zero()
                 } else {
-                    G2::from_affine(substrate_bn::AffineG2::new(bx, by).map_err(|_| ())?).map_err(|_| ())?
+                    G2::from_affine(substrate_bn::AffineG2::new(bx, by).map_err(|_| ())?)
+                        .map_err(|_| ())?
                 };
 
                 acc = acc * substrate_bn::pairing(a, b);
@@ -936,7 +1047,10 @@ mod precompiles {
 
     // --- 0x09: Blake2F (EIP-152)
 
-    fn blake2f_precompile(input: &[u8], gas_limit: Option<u64>) -> Result<PrecompileOutput, PrecompileFailure> {
+    fn blake2f_precompile(
+        input: &[u8],
+        gas_limit: Option<u64>,
+    ) -> Result<PrecompileOutput, PrecompileFailure> {
         #[cfg(not(feature = "full-precompiles"))]
         {
             let _ = (input, gas_limit);
@@ -976,7 +1090,10 @@ mod precompiles {
                 out[i * 8..i * 8 + 8].copy_from_slice(&out_h[i].to_le_bytes());
             }
 
-            Ok(PrecompileOutput { exit_status: evm::ExitSucceed::Returned, output: out })
+            Ok(PrecompileOutput {
+                exit_status: evm::ExitSucceed::Returned,
+                output: out,
+            })
         }
     }
 
@@ -1061,12 +1178,12 @@ pub fn compute_evm_prepare_root(
     result: &EvmExecutionResult,
 ) -> [u8; 32] {
     use sp_core::hashing::blake2_256;
-    
+
     let mut preimage = Vec::new();
     preimage.extend_from_slice(comit_id);
     preimage.extend_from_slice(payload);
     preimage.extend_from_slice(&result.state_root);
-    
+
     blake2_256(&preimage)
 }
 
@@ -1116,7 +1233,9 @@ mod tests {
         payload.extend_from_slice(&to);
         payload.extend_from_slice(&0u64.to_be_bytes());
         payload.extend_from_slice(b"hello");
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         assert_eq!(result.output, b"hello");
 
@@ -1154,7 +1273,9 @@ mod tests {
         payload.extend_from_slice(&0u64.to_be_bytes()); // value
         payload.extend_from_slice(&bytecode);
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         // Contract deployment may or may not return output depending on implementation
         // Just check it succeeds
@@ -1168,16 +1289,18 @@ mod tests {
         let bytecode = vec![
             0x60, 0x42, // PUSH1 0x42
             0x60, 0x00, // PUSH1 0x00
-            0x55,       // SSTORE
+            0x55, // SSTORE
             0x60, 0x00, // PUSH1 0x00
             0x60, 0x00, // PUSH1 0x00
-            0xF3,       // RETURN (returns 0)
+            0xF3, // RETURN (returns 0)
         ];
         let mut deploy_payload = vec![0x01]; // CREATE
         deploy_payload.extend_from_slice(&0u64.to_be_bytes()); // value
         deploy_payload.extend_from_slice(&bytecode);
 
-        let deploy_result = executor.execute(&deploy_payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let deploy_result = executor
+            .execute(&deploy_payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(deploy_result.success);
 
         // Now call the contract (though it doesn't have a function, just returns 0)
@@ -1186,7 +1309,9 @@ mod tests {
         call_payload.extend_from_slice(&0u64.to_be_bytes()); // value
         call_payload.extend_from_slice(&[]); // input
 
-        let call_result = executor.execute(&call_payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let call_result = executor
+            .execute(&call_payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(call_result.success);
     }
 
@@ -1198,7 +1323,7 @@ mod tests {
         let bytecode = vec![
             0x60, 0x00, // PUSH1 0x00
             0x60, 0x00, // PUSH1 0x00
-            0xFD,       // REVERT
+            0xFD, // REVERT
         ];
         let mut payload = vec![0x01]; // CREATE
         payload.extend_from_slice(&0u64.to_be_bytes()); // value
@@ -1221,15 +1346,16 @@ mod tests {
         payload.extend_from_slice(&0u64.to_be_bytes());
         payload.extend_from_slice(b"hello");
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         assert_eq!(result.output.len(), 32);
         // SHA256 of "hello"
         let expected = [
-            0x2c, 0xf2, 0x4d, 0xba, 0x5f, 0xb0, 0xa3, 0x0e,
-            0x26, 0xe8, 0x3b, 0x2a, 0xc5, 0xb9, 0xe2, 0x9e,
-            0x1b, 0x16, 0x1e, 0x5c, 0x1f, 0xa7, 0x42, 0x5e,
-            0x73, 0x04, 0x33, 0x62, 0x93, 0x8b, 0x98, 0x24,
+            0x2c, 0xf2, 0x4d, 0xba, 0x5f, 0xb0, 0xa3, 0x0e, 0x26, 0xe8, 0x3b, 0x2a, 0xc5, 0xb9,
+            0xe2, 0x9e, 0x1b, 0x16, 0x1e, 0x5c, 0x1f, 0xa7, 0x42, 0x5e, 0x73, 0x04, 0x33, 0x62,
+            0x93, 0x8b, 0x98, 0x24,
         ];
         assert_eq!(result.output, expected);
     }
@@ -1247,7 +1373,9 @@ mod tests {
         payload.extend_from_slice(&0u64.to_be_bytes());
         payload.extend_from_slice(b"hello");
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         assert_eq!(result.output.len(), 32);
         // Just check it's not all zeros
@@ -1262,16 +1390,18 @@ mod tests {
         let bytecode = vec![
             0x60, 0x42, // PUSH1 0x42
             0x60, 0x00, // PUSH1 0x00
-            0x55,       // SSTORE
+            0x55, // SSTORE
             0x60, 0x00, // PUSH1 0x00
             0x60, 0x00, // PUSH1 0x00
-            0xF3,       // RETURN
+            0xF3, // RETURN
         ];
         let mut payload = vec![0x01]; // CREATE
         payload.extend_from_slice(&0u64.to_be_bytes()); // value
         payload.extend_from_slice(&bytecode);
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         // State root should be non-zero after state changes
         assert_ne!(result.state_root, [0u8; 32]);
@@ -1286,16 +1416,18 @@ mod tests {
             0x60, 0x20, // PUSH1 0x20 (size)
             0x60, 0x00, // PUSH1 0x00 (offset)
             0x60, 0x00, // PUSH1 0x00 (topic count, but LOG1 uses 1 topic)
-            0xA1,       // LOG1
+            0xA1, // LOG1
             0x60, 0x00, // PUSH1 0x00
             0x60, 0x00, // PUSH1 0x00
-            0xF3,       // RETURN
+            0xF3, // RETURN
         ];
         let mut payload = vec![0x01]; // CREATE
         payload.extend_from_slice(&0u64.to_be_bytes()); // value
         payload.extend_from_slice(&bytecode);
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         // Should have emitted logs
         assert!(!result.logs.is_empty());
@@ -1317,13 +1449,21 @@ mod tests {
         let executor = FrontierEvmExecutor;
         // Valid bytecode
         let valid_bytecode = vec![0x00]; // STOP
-        assert!(executor.validate_bytecode(&[0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0x00]).is_ok());
+        assert!(executor
+            .validate_bytecode(&[0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0x00])
+            .is_ok());
 
         // Empty bytecode
-        assert_eq!(executor.validate_bytecode(&[0x01, 0, 0, 0, 0, 0, 0, 0, 0]), Err(EvmError::InvalidPayload));
+        assert_eq!(
+            executor.validate_bytecode(&[0x01, 0, 0, 0, 0, 0, 0, 0, 0]),
+            Err(EvmError::InvalidPayload)
+        );
 
         // Invalid payload
-        assert_eq!(executor.validate_bytecode(&[0xFF]), Err(EvmError::InvalidPayload));
+        assert_eq!(
+            executor.validate_bytecode(&[0xFF]),
+            Err(EvmError::InvalidPayload)
+        );
     }
 
     #[cfg(feature = "frontier-executor")]
@@ -1341,7 +1481,9 @@ mod tests {
         let input = vec![0u8; 128];
         payload.extend_from_slice(&input);
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         // ecrecover returns 32 bytes (address or zeros for invalid input)
         // Allow empty output for invalid inputs
@@ -1408,17 +1550,24 @@ mod tests {
         input.extend_from_slice(&modu);
         payload.extend_from_slice(&input);
 
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         // manual computation: 258^5 mod 97
         let mut acc = 1u128;
-        for _ in 0..5 { acc = (acc * 258) % 97 }
+        for _ in 0..5 {
+            acc = (acc * 258) % 97
+        }
         if !result.output.is_empty() {
             let mut out_bytes = [0u8; 32];
             let take = core::cmp::min(32, result.output.len());
             out_bytes[32 - take..32].copy_from_slice(&result.output[..take]);
             let out_val = ethereum_types::U256::from_big_endian(&out_bytes);
-            assert_eq!(out_val % ethereum_types::U256::from(97u64), ethereum_types::U256::from(acc));
+            assert_eq!(
+                out_val % ethereum_types::U256::from(97u64),
+                ethereum_types::U256::from(acc)
+            );
         }
     }
 
@@ -1434,7 +1583,9 @@ mod tests {
         payload.extend_from_slice(&0u64.to_be_bytes());
         // empty input should return 32 bytes with last byte 1 per implementation
         payload.extend_from_slice(&[]);
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         assert_eq!(result.output.len(), 32);
         assert_eq!(result.output[31], 1);
@@ -1454,7 +1605,9 @@ mod tests {
         let mut input = vec![0u8; 213];
         input[0..4].copy_from_slice(&1u32.to_be_bytes());
         payload.extend_from_slice(&input);
-        let result = executor.execute(&payload, &[0u8; 20], &EvmConfig::default()).unwrap();
+        let result = executor
+            .execute(&payload, &[0u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(result.success);
         assert_eq!(result.output.len(), 64);
     }
@@ -1486,23 +1639,29 @@ mod tests {
         let bytecode = vec![
             0x60, 0x42, // PUSH1 0x42
             0x60, 0x00, // PUSH1 0x00
-            0x55,       // SSTORE
+            0x55, // SSTORE
             0x60, 0x00, // PUSH1 0x00
             0x60, 0x00, // PUSH1 0x00
-            0xF3,       // RETURN
+            0xF3, // RETURN
         ];
 
         let mut payload = vec![0x01]; // CREATE
         payload.extend_from_slice(&0u64.to_be_bytes()); // value
         payload.extend_from_slice(&bytecode);
 
-        let res1 = executor.execute(&payload, &[1u8; 20], &EvmConfig::default()).unwrap();
+        let res1 = executor
+            .execute(&payload, &[1u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(res1.success);
 
-        let res2 = executor.execute(&payload, &[1u8; 20], &EvmConfig::default()).unwrap();
+        let res2 = executor
+            .execute(&payload, &[1u8; 20], &EvmConfig::default())
+            .unwrap();
         assert!(res2.success);
 
-        assert_eq!(res1.state_root, res2.state_root, "State roots should be deterministic for identical deployments");
+        assert_eq!(
+            res1.state_root, res2.state_root,
+            "State roots should be deterministic for identical deployments"
+        );
     }
 }
-
