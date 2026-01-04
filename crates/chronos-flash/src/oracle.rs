@@ -12,7 +12,8 @@ use crate::mempool::MempoolScanner;
 use crate::predictor::IntentPredictor;
 use crate::router::QuantumRouter;
 use crate::timewarp::{TimeWarpEngine, Signer};
-use crate::types::{ExecutionResult, MempoolStats, OracleMetrics, PreSignedBundle, TradeRoute};
+use crate::types::{ChainId, ChainStatus, ExecutionResult, MempoolStats, OracleMetrics, PreSignedBundle, TradeRoute};
+use std::collections::HashMap;
 
 /// ChronosFlash Oracle - Negative-latency pre-execution system
 ///
@@ -50,6 +51,18 @@ pub struct ChronosOracle {
 }
 
 impl ChronosOracle {
+    pub fn shared_mempool_stats(&self) -> Arc<RwLock<MempoolStats>> {
+        self.mempool.shared_stats_handle()
+    }
+
+    pub fn shared_chain_statuses(&self) -> Arc<RwLock<HashMap<ChainId, ChainStatus>>> {
+        self.mempool.shared_statuses_handle()
+    }
+
+    pub fn shared_oracle_metrics(&self) -> Arc<RwLock<OracleMetrics>> {
+        self.metrics.clone()
+    }
+
     /// Create new ChronosFlash oracle
     pub async fn new(
         config: ChronosConfig,

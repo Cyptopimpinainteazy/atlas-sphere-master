@@ -5,7 +5,7 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::types::{Address, Balance, ChainId, Gas, Hash, Price, Timestamp, Token};
+use crate::types::{Address, Balance, ChainId, Gas, Hash, Timestamp, Token};
 
 /// Unique identifier for detected intents
 pub type IntentId = Uuid;
@@ -127,6 +127,7 @@ impl Default for PredictionBasis {
 
 /// Intent detector for parsing mempool transactions
 pub struct IntentDetector {
+    #[allow(dead_code)]
     known_routers: Vec<KnownRouter>,
     swap_selectors: Vec<SwapSelector>,
 }
