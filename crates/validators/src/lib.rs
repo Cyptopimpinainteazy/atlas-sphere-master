@@ -1,9 +1,9 @@
 use asga_receipts::{Attestation, AttestationScheme, DomainId, EvmReceipt, ReceiptHeader};
 use parity_scale_codec::Encode;
 use secp256k1::{
-    recovery::RecoverableSignature, recovery::RecoveryId, Message, PublicKey, Secp256k1, SecretKey,
+    ecdsa::RecoverableSignature, ecdsa::RecoveryId, Message, Secp256k1,
 };
-use sp_core::sr25519;
+use sp_core::{sr25519, Pair};
 use tiny_keccak::{Hasher, Keccak};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -64,16 +64,16 @@ pub fn verify_evm_signature(
     let rec_sig = RecoverableSignature::from_compact(&compact, recid)
         .map_err(|_| ValidationError::SignatureRecoverFailed)?;
     // Recover pubkey directly from the recoverable signature
-    let pubkey = rec_sig
-        .recover(&msg)
+    let secp = Secp256k1::new();
+    let pubkey = secp.recover_ecdsa(&msg, &rec_sig)
         .map_err(|_| ValidationError::SignatureRecoverFailed)?;
 
-    // Compare compressed pubkey (33 bytes) to header.signer
-    let comp = pubkey.serialize_compressed();
+    // Compare serialized pubkey to header.signer
+    let serialized = pubkey.serialize();
     if header.signer.is_empty() {
         return Err(ValidationError::MissingField);
     }
-    if header.signer.len() != comp.len() || header.signer.as_slice() != comp {
+    if header.signer.len() != serialized.len() || header.signer.as_slice() != serialized {
         return Err(ValidationError::SignerMismatch);
     }
 
@@ -100,7 +100,7 @@ pub fn verify_sr25519_attestation(
 
     let pubkey = sr25519::Public::from_raw(att.attester_pubkey);
 
-    // verify using Pair::verify
+    // verify using sp_core native verification (works in both native and wasm)
     if !sr25519::Pair::verify(&signature, payload, &pubkey) {
         return Err(ValidationError::InvalidAttestation);
     }
@@ -144,8 +144,8 @@ pub fn validate_evm_receipt(
 mod tests {
     use super::*;
     use asga_receipts::{EvmReceipt, Phase, ReceiptHeader};
-    use secp256k1::rand::rngs::OsRng;
-    use secp256k1::SecretKey;
+    use rand::rngs::OsRng;
+    use secp256k1::{PublicKey, SecretKey};
 
     #[test]
     fn valid_evm_signature_roundtrip() {
@@ -173,7 +173,7 @@ mod tests {
         let mut rng = OsRng::default();
         let sk = SecretKey::new(&mut rng);
         let pk = PublicKey::from_secret_key(&secp, &sk);
-        let comp = pk.serialize_compressed();
+        let comp = pk.serialize();
 
         // patch header signer
         let mut header_signed = header.clone();
@@ -185,7 +185,7 @@ mod tests {
         let msg_hash = keccak256(&msg_bytes);
         let msg = Message::from_slice(&msg_hash).unwrap();
 
-        let rec_sig = secp.sign_recoverable(&msg, &sk);
+        let rec_sig = secp.sign_ecdsa_recoverable(&msg, &sk);
         let (recid, compact) = rec_sig.serialize_compact();
         let v = (recid.to_i32() as u8) + 27; // use 27/28
         let mut sig_bytes = Vec::with_capacity(65);
@@ -242,7 +242,7 @@ mod tests {
         let msg_hash = keccak256(&msg_bytes);
         let msg = Message::from_slice(&msg_hash).unwrap();
 
-        let rec_sig = secp.sign_recoverable(&msg, &sk);
+        let rec_sig = secp.sign_ecdsa_recoverable(&msg, &sk);
         let (recid, compact) = rec_sig.serialize_compact();
         let v = (recid.to_i32() as u8) + 27;
         let mut sig_bytes = Vec::with_capacity(65);

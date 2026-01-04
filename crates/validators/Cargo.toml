@@ -7,9 +7,10 @@ edition = "2021"
 asga-receipts = { path = "../receipts" }
 secp256k1 = { version = "0.27", features = ["recovery"] }
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-
 parity-scale-codec = "3.0"
+sp-core = { workspace = true, default-features = false, features = ["std"] }
 
 [dev-dependencies]
+secp256k1 = { version = "0.27", features = ["recovery", "rand-std"] }
 hex = "0.4"
 rand = "0.8"

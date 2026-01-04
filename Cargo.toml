@@ -3,6 +3,7 @@ members = [
     # Substrate L1
     "pallets/atlas-kernel",
     "pallets/audit-governance",
+    "pallets/atomic-guardian",
     "pallets/pallet-invariants",
     "pallets/swarm-media",
     "pallets/swarm-evolution",
@@ -17,7 +18,9 @@ members = [
     "runtime",
     "node",
 ]
-exclude = ["crates/quantum-swarm"]
+exclude = [
+    "crates/quantum-swarm",
+]
 default-members = ["runtime"]
 resolver = "2"
 
@@ -157,6 +160,7 @@ scale-info = { version = "2.11.1", default-features = false, features = ["derive
 # Utilities
 futures = "0.3.30"
 getrandom = { version = "0.3.4", default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 hex-literal = "0.4.1"
 log = { version = "0.4.20", default-features = false }
 once_cell = "1.19.0"
@@ -180,4 +184,4 @@ bumpalo = { version = "3.14", default-features = false }
 rustc-hash = { version = "1.1", default-features = false }
 typed-arena = { version = "2.0", default-features = false }
 anyhow = { version = "1.0", default-features = false }
-proptest = { version = "1.4", default-features = false }
+proptest = { version = "1.4", default-features = false, features = ["std"] }

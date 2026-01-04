@@ -28,7 +28,7 @@ use pallet_invariants;
 #[cfg(feature = "dev")]
 use pallet_sudo;
 use pallet_swarm_evolution;
-use pallet_swarm_media;
+// use pallet_swarm_media;  // TODO: has compilation issues
 use pallet_timestamp;
 use pallet_transaction_payment::FungibleAdapter;
 use scale_info::TypeInfo;
@@ -615,26 +615,26 @@ impl_runtime_apis! {
         }
     }
 
-    impl pallet_swarm_media::SwarmMediaRuntimeApi<Block, AccountId> for Runtime {
-        fn get_media_status() -> pallet_swarm_media::MediaProductionStatus {
-            pallet_swarm_media::Pallet::<Runtime>::get_media_status()
-        }
-
-        fn get_contributor(account: AccountId) -> Option<pallet_swarm_media::Contributor> {
-            pallet_swarm_media::Pallet::<Runtime>::get_contributor(&account)
-        }
-
-        fn get_job(job_id: Vec<u8>) -> Option<pallet_swarm_media::JobStatusRecord> {
-            pallet_swarm_media::Pallet::<Runtime>::get_job(&job_id)
-        }
-
-        fn list_jobs() -> Vec<(Vec<u8>, pallet_swarm_media::JobStatusRecord)> {
-            pallet_swarm_media::Pallet::<Runtime>::list_jobs()
-                .into_iter()
-                .map(|(k, v)| (k.into_inner(), v))
-                .collect()
-        }
-    }
+    // impl pallet_swarm_media::SwarmMediaRuntimeApi<Block, AccountId> for Runtime {  // TODO: has compilation issues
+    //     fn get_media_status() -> pallet_swarm_media::MediaProductionStatus {
+    //         pallet_swarm_media::Pallet::<Runtime>::get_media_status()
+    //     }
+    //
+    //     fn get_contributor(account: AccountId) -> Option<pallet_swarm_media::Contributor> {
+    //         pallet_swarm_media::Pallet::<Runtime>::get_contributor(&account)
+    //     }
+    //
+    //     fn get_job(job_id: Vec<u8>) -> Option<pallet_swarm_media::JobStatusRecord> {
+    //         pallet_swarm_media::Pallet::<Runtime>::get_job(&job_id)
+    //     }
+    //
+    //     fn list_jobs() -> Vec<(Vec<u8>, pallet_swarm_media::JobStatusRecord)> {
+    //         pallet_swarm_media::Pallet::<Runtime>::list_jobs()
+    //             .into_iter()
+    //             .map(|(k, v)| (k.into_inner(), v))
+    //             .collect()
+    //     }
+    // }
 
     // Note: SwarmEvolution pallet doesn't declare a runtime API yet.
     // The helper methods can be accessed directly via pallet_swarm_evolution::Pallet::<Runtime>

@@ -7,204 +7,186 @@
 //! - Extrinsics for media operations
 //! - Runtime API for RPC access
 //!
-//! Types are defined inline to be SCALE-codec compatible (no external crate dependency for storage).
+//! Types are defined inside the pallet module for SCALE-codec and proc macro compatibility.
 
 pub use pallet::*;
 
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::pallet_prelude::*;
-use scale_info::TypeInfo;
-use sp_std::prelude::*;
-
-#[cfg(test)]
+// #[cfg(test)]
 // mod mock; // TODO: File missing, commented out to fix compilation
-#[cfg(test)]
+// #[cfg(test)]
 // mod tests; // TODO: File missing, commented out to fix compilation
-#[cfg(feature = "runtime-benchmarks")]
+// #[cfg(feature = "runtime-benchmarks")]
 // mod benchmarking; // TODO: File missing, commented out to fix compilation
 
 // ============================================================================
-// Runtime-friendly types (SCALE-codec compatible)
-// ============================================================================
-
-/// Contributor role within the media system
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum ContributorRole {
-    Founder,
-    Educator,
-    Narrator,
-    Presenter,
-    CommunityHost,
-    GuestExpert,
-    Producer,
-}
-
-impl Default for ContributorRole {
-    fn default() -> Self {
-        ContributorRole::Presenter
-    }
-}
-
-/// Contributor status
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum ContributorStatus {
-    Active,
-    Paused,
-    Revoked,
-    Retired,
-}
-
-impl Default for ContributorStatus {
-    fn default() -> Self {
-        ContributorStatus::Active
-    }
-}
-
-/// Maximum length for string fields in storage
-pub type MaxStringLength = ConstU32<256>;
-
-/// Runtime-friendly contributor representation
-/// Uses bounded vectors for SCALE compatibility
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(S))]
-pub struct RuntimeContributor<S: Get<u32>> {
-    /// Unique identifier
-    pub id: BoundedVec<u8, S>,
-    /// Display name
-    pub name: BoundedVec<u8, S>,
-    /// Role in production
-    pub role: ContributorRole,
-    /// Current status
-    pub status: ContributorStatus,
-    /// Email (bounded)
-    pub email: BoundedVec<u8, S>,
-    /// Optional wallet address (hex encoded)
-    pub wallet_address: Option<BoundedVec<u8, S>>,
-    /// Whether currently active
-    pub is_active: bool,
-}
-
-/// Job status enumeration
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum JobStatus {
-    Queued,
-    Processing,
-    Completed,
-    Failed,
-    Cancelled,
-}
-
-impl Default for JobStatus {
-    fn default() -> Self {
-        JobStatus::Queued
-    }
-}
-
-/// Job priority level
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
-pub enum JobPriority {
-    Low,
-    Normal,
-    High,
-    Urgent,
-}
-
-impl Default for JobPriority {
-    fn default() -> Self {
-        JobPriority::Normal
-    }
-}
-
-/// Runtime-friendly job status record
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
-#[scale_info(skip_type_params(S))]
-pub struct RuntimeJobStatusRecord<S: Get<u32>> {
-    /// Job identifier
-    pub job_id: BoundedVec<u8, S>,
-    /// Current status
-    pub status: JobStatus,
-    /// Priority level
-    pub priority: JobPriority,
-    /// Asset type being created
-    pub asset_type: BoundedVec<u8, S>,
-    /// Target platform
-    pub target: BoundedVec<u8, S>,
-    /// Progress percentage (0-100)
-    pub progress_percentage: u8,
-    /// Block number when created
-    pub created_at_block: u32,
-    /// Block number of last update
-    pub last_update_block: u32,
-    /// Optional error message
-    pub error_message: Option<BoundedVec<u8, S>>,
-}
-
-/// Runtime-friendly media production status
-#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, Default)]
-pub struct RuntimeMediaProductionStatus {
-    /// Total recordings scheduled
-    pub recordings_scheduled: u32,
-    /// Completed recordings
-    pub recordings_completed: u32,
-    /// On-time percentage (basis points, 0-10000 = 0-100%)
-    pub on_time_percentage_bps: u16,
-    /// Total assets created
-    pub total_assets_created: u32,
-    /// Assets ready for publishing
-    pub assets_ready: u32,
-    /// Assets published
-    pub assets_published: u32,
-    /// Active contributor count
-    pub active_contributors: u32,
-    /// Total production hours (scaled by 100)
-    pub total_production_hours_scaled: u32,
-    /// Last recording block
-    pub last_recording_block: Option<u32>,
-    /// Next scheduled recording block
-    pub next_recording_block: Option<u32>,
-}
-
-// ============================================================================
-// Type aliases for bounded vectors
-// ============================================================================
-
-/// Contributor type alias
-pub type Contributor = RuntimeContributor<MaxStringLength>;
-
-/// Job status record type alias
-pub type JobStatusRecord = RuntimeJobStatusRecord<MaxStringLength>;
-
-/// Media production status type alias
-pub type MediaProductionStatus = RuntimeMediaProductionStatus;
-
-// ============================================================================
-// Runtime API declaration
-// ============================================================================
-
-sp_api::decl_runtime_apis! {
-    /// Runtime API for accessing Swarm Media data
-    pub trait SwarmMediaRuntimeApi<AccountId> where
-        AccountId: codec::Codec,
-    {
-        /// Get current media production status
-        fn get_media_status() -> MediaProductionStatus;
-        /// Get contributor by account ID
-        fn get_contributor(account: AccountId) -> Option<Contributor>;
-        /// Get job status by job ID
-        fn get_job(job_id: Vec<u8>) -> Option<JobStatusRecord>;
-        /// List all jobs
-        fn list_jobs() -> Vec<(Vec<u8>, JobStatusRecord)>;
-    }
-}
-
-// ============================================================================
-// Pallet definition
+// Pallet definition with inline types
 // ============================================================================
 
 #[frame_support::pallet]
 pub mod pallet {
-    use super::*;
+    use codec::{Decode, Encode, MaxEncodedLen};
+    use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use scale_info::TypeInfo;
+    use sp_std::prelude::*;
+
+    // ========================================================================
+    // Runtime-friendly types (SCALE-codec compatible)
+    // ========================================================================
+
+    /// Contributor role within the media system
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
+    pub enum ContributorRole {
+        Founder,
+        Educator,
+        Narrator,
+        Presenter,
+        CommunityHost,
+        GuestExpert,
+        Producer,
+    }
+
+    impl Default for ContributorRole {
+        fn default() -> Self {
+            ContributorRole::Presenter
+        }
+    }
+
+    /// Contributor status
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
+    pub enum ContributorStatus {
+        Active,
+        Paused,
+        Revoked,
+        Retired,
+    }
+
+    impl Default for ContributorStatus {
+        fn default() -> Self {
+            ContributorStatus::Active
+        }
+    }
+
+    /// Maximum length for string fields in storage
+    pub type MaxStringLength = ConstU32<256>;
+
+    /// Runtime-friendly contributor representation
+    /// Uses bounded vectors for SCALE compatibility
+    #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
+    #[scale_info(skip_type_params(S))]
+    pub struct RuntimeContributor<S: Get<u32>> {
+        /// Unique identifier
+        pub id: BoundedVec<u8, S>,
+        /// Display name
+        pub name: BoundedVec<u8, S>,
+        /// Role in production
+        pub role: ContributorRole,
+        /// Current status
+        pub status: ContributorStatus,
+        /// Email (bounded)
+        pub email: BoundedVec<u8, S>,
+        /// Optional wallet address (hex encoded)
+        pub wallet_address: Option<BoundedVec<u8, S>>,
+        /// Whether currently active
+        pub is_active: bool,
+    }
+
+    /// Job status enumeration
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
+    pub enum JobStatus {
+        Queued,
+        Processing,
+        Completed,
+        Failed,
+        Cancelled,
+    }
+
+    impl Default for JobStatus {
+        fn default() -> Self {
+            JobStatus::Queued
+        }
+    }
+
+    /// Job priority level
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
+    pub enum JobPriority {
+        Low,
+        Normal,
+        High,
+        Urgent,
+    }
+
+    impl Default for JobPriority {
+        fn default() -> Self {
+            JobPriority::Normal
+        }
+    }
+
+    /// Runtime-friendly job status record
+    #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen)]
+    #[scale_info(skip_type_params(S))]
+    pub struct RuntimeJobStatusRecord<S: Get<u32>> {
+        /// Job identifier
+        pub job_id: BoundedVec<u8, S>,
+        /// Current status
+        pub status: JobStatus,
+        /// Priority level
+        pub priority: JobPriority,
+        /// Asset type being created
+        pub asset_type: BoundedVec<u8, S>,
+        /// Target platform
+        pub target: BoundedVec<u8, S>,
+        /// Progress percentage (0-100)
+        pub progress_percentage: u8,
+        /// Block number when created
+        pub created_at_block: u32,
+        /// Block number of last update
+        pub last_update_block: u32,
+        /// Optional error message
+        pub error_message: Option<BoundedVec<u8, S>>,
+    }
+
+    /// Runtime-friendly media production status
+    #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, TypeInfo, MaxEncodedLen, Default)]
+    pub struct RuntimeMediaProductionStatus {
+        /// Total recordings scheduled
+        pub recordings_scheduled: u32,
+        /// Completed recordings
+        pub recordings_completed: u32,
+        /// On-time percentage (basis points, 0-10000 = 0-100%)
+        pub on_time_percentage_bps: u16,
+        /// Total assets created
+        pub total_assets_created: u32,
+        /// Assets ready for publishing
+        pub assets_ready: u32,
+        /// Assets published
+        pub assets_published: u32,
+        /// Active contributor count
+        pub active_contributors: u32,
+        /// Total production hours (scaled by 100)
+        pub total_production_hours_scaled: u32,
+        /// Last recording block
+        pub last_recording_block: Option<u32>,
+        /// Next scheduled recording block
+        pub next_recording_block: Option<u32>,
+    }
+
+    // ========================================================================
+    // Type aliases for bounded vectors
+    // ========================================================================
+
+    /// Contributor type alias
+    pub type Contributor = RuntimeContributor<MaxStringLength>;
+
+    /// Job status record type alias
+    pub type JobStatusRecord = RuntimeJobStatusRecord<MaxStringLength>;
+
+    /// Media production status type alias
+    pub type MediaProductionStatus = RuntimeMediaProductionStatus;
+
+    // ========================================================================
+    // Pallet structure and configuration
+    // ========================================================================
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
@@ -216,6 +198,10 @@ pub mod pallet {
         /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
     }
+
+    // ========================================================================
+    // Storage items
+    // ========================================================================
 
     /// Storage for media production status
     #[pallet::storage]
@@ -238,6 +224,10 @@ pub mod pallet {
         JobStatusRecord,
         OptionQuery,
     >;
+
+    // ========================================================================
+    // Events
+    // ========================================================================
 
     /// Events emitted by this pallet
     #[pallet::event]
@@ -269,6 +259,10 @@ pub mod pallet {
         },
     }
 
+    // ========================================================================
+    // Errors
+    // ========================================================================
+
     /// Errors emitted by this pallet
     #[pallet::error]
     pub enum Error<T> {
@@ -286,7 +280,10 @@ pub mod pallet {
         StringTooLong,
     }
 
-    /// Pallet implementation
+    // ========================================================================
+    // Extrinsics (callable functions)
+    // ========================================================================
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         /// Update media production status
@@ -473,7 +470,10 @@ pub mod pallet {
         }
     }
 
-    /// Runtime API implementation
+    // ========================================================================
+    // Runtime API implementation helpers
+    // ========================================================================
+
     impl<T: Config> Pallet<T> {
         /// Get media status via runtime API
         pub fn get_media_status() -> MediaProductionStatus {
@@ -495,5 +495,27 @@ pub mod pallet {
         pub fn list_jobs() -> Vec<(BoundedVec<u8, MaxStringLength>, JobStatusRecord)> {
             <Jobs<T>>::iter().collect()
         }
+    }
+}
+
+// ============================================================================
+// Runtime API declaration (uses re-exported types from pallet::*)
+// ============================================================================
+
+use sp_std::vec::Vec;
+
+sp_api::decl_runtime_apis! {
+    /// Runtime API for accessing Swarm Media data
+    pub trait SwarmMediaRuntimeApi<AccountId> where
+        AccountId: codec::Codec,
+    {
+        /// Get current media production status
+        fn get_media_status() -> MediaProductionStatus;
+        /// Get contributor by account ID
+        fn get_contributor(account: AccountId) -> Option<Contributor>;
+        /// Get job status by job ID
+        fn get_job(job_id: Vec<u8>) -> Option<JobStatusRecord>;
+        /// List all jobs
+        fn list_jobs() -> Vec<(Vec<u8>, JobStatusRecord)>;
     }
 }

@@ -5,12 +5,14 @@
 
 use std::sync::Arc;
 
-use atlas_sphere_runtime::{opaque::Block, AccountId, Balance, Index};
+use atlas_sphere_runtime::{opaque::Block, AccountId, Balance, Index, AssetId};
+use pallet_atlas_kernel::AtlasKernelRuntimeApi;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
 use sp_blockchain::{Error as BlockchainError, HeaderBackend, HeaderMetadata};
 use sp_core::crypto::Ss58Codec;
+use sp_core::ByteArray;
 
 pub use sc_rpc_api::DenyUnsafe;
 
@@ -22,7 +24,8 @@ fn decode_account(account_str: &str) -> Result<AccountId, String> {
             .map_err(|e| format!("Invalid hex account: {}", e))
             .and_then(|bytes| {
                 if bytes.len() == 32 {
-                    Ok(AccountId::from_slice(&bytes))
+                    AccountId::from_slice(&bytes)
+                        .map_err(|_| "Failed to parse 32-byte account ID".to_string())
                 } else {
                     Err(format!(
                         "Invalid account length: expected 32 bytes, got {}",
@@ -65,6 +68,7 @@ where
     C: Send + Sync + 'static,
     C::Api: substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Index>,
     C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
+    C::Api: pallet_atlas_kernel::AtlasKernelRuntimeApi<Block, AccountId, Balance, AssetId>,
     C::Api: BlockBuilder<Block>,
     P: TransactionPool + 'static,
 {
@@ -101,8 +105,10 @@ fn atlas_kernel_rpc<C>(
     client: Arc<C>,
 ) -> Result<jsonrpsee::RpcModule<Arc<C>>, Box<dyn std::error::Error + Send + Sync>>
 where
+    C: ProvideRuntimeApi<Block> + 'static,
     C: HeaderBackend<Block> + 'static,
     C: Send + Sync + 'static,
+    C::Api: pallet_atlas_kernel::AtlasKernelRuntimeApi<Block, AccountId, Balance, AssetId>,
 {
     let mut module = jsonrpsee::RpcModule::new(client);
 
@@ -115,10 +121,13 @@ where
         let account = decode_account(&account_str)
             .map_err(|e| jsonrpsee::types::ErrorObjectOwned::owned(-32602, e, None::<()>))?;
 
+        // Get best block hash for runtime API call
+        let best_hash = client.info().best_hash;
+
         // Query real balance from canonical ledger using runtime API
         let balance = client
             .runtime_api()
-            .get_canonical_balance(account, asset_id)
+            .get_canonical_balance(best_hash, account, asset_id)
             .map_err(|e| {
                 jsonrpsee::types::ErrorObjectOwned::owned(
                     -32000,
@@ -145,8 +154,11 @@ where
         let account = decode_account(&account_str)
             .map_err(|e| jsonrpsee::types::ErrorObjectOwned::owned(-32602, e, None::<()>))?;
 
+        // Get best block hash for runtime API call
+        let best_hash = client.info().best_hash;
+
         // Query real authorization from AuthorizedAccounts storage using runtime API
-        let is_authorized = client.runtime_api().is_authorized(account).map_err(|e| {
+        let is_authorized = client.runtime_api().is_authorized(best_hash, account).map_err(|e| {
             jsonrpsee::types::ErrorObjectOwned::owned(
                 -32000,
                 format!("Runtime API error: {}", e),
@@ -175,10 +187,13 @@ where
             total_supply: String,
         }
 
+        // Get best block hash for runtime API call
+        let best_hash = client.info().best_hash;
+
         // Query real metadata from AssetRegistry storage using runtime API
         let metadata_result = client
             .runtime_api()
-            .get_asset_metadata(asset_id)
+            .get_asset_metadata(best_hash, asset_id)
             .map_err(|e| {
                 jsonrpsee::types::ErrorObjectOwned::owned(
                     -32000,
