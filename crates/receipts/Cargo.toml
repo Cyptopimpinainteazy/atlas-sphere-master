@@ -5,7 +5,11 @@ edition = "2021"
 
 [dependencies]
 parity-scale-codec = { version = "3.0", features = ["derive"] }
-scale-info = "2.0"
+scale-info = { version = "2.0", features = ["derive"] }
+
+[features]
+default = ["std"]
+std = []
 
 [dev-dependencies]
 hex = "0.4"
