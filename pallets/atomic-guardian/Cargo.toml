@@ -4,17 +4,47 @@ version = "0.1.0"
 authors = ["ATLAS Team <dev@atlas.example>"]
 edition = "2021"
 
+publish = false
+
 [lib]
 name = "pallet_atomic_guardian"
-path = "src/lib.rs"
+path = "src/pallet.rs"
 
 [dependencies]
-frame-support = { version = "4.0.0", default-features = false }
-frame-system = { version = "4.0.0", default-features = false }
-sp-runtime = { version = "4.0.0", default-features = false }
-codec = { version = "0.3", default-features = false }
-serde_json = { version = "1.0", default-features = false, features = ["std"] }
-asga-receipts = { path = "../../crates/receipts" }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+
+codec = { workspace = true, default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+
+asga-receipts = { path = "../../crates/receipts", default-features = false }
 
 [dev-dependencies]
-serde = { version = "1.0", features = ["derive"] }
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false, features = ["std"] }
+
+[features]
+default = ["std"]
+std = [
+	"frame-support/std",
+	"frame-system/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"codec/std",
+	"scale-info/std",
+	"asga-receipts/std",
+]
+
+runtime-benchmarks = [
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+]
+
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+]

@@ -1,0 +1,25 @@
+[package]
+name = "asga-chaos"
+version = "0.1.0"
+edition = "2021"
+description = "Chaos testing harness for ASGA (Atomic Swap Guardian Agent)"
+authors = ["ATLAS Team <dev@atlas.example>"]
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+asga-receipts = { path = "../receipts", default-features = false }
+asga-state-machine = { path = "../asga-state-machine", default-features = false }
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive"] }
+
+[dev-dependencies]
+proptest = { workspace = true }
+rand = "0.8"
+
+[features]
+default = ["std"]
+std = [
+    "asga-receipts/std",
+    "asga-state-machine/std",
+    "parity-scale-codec/std",
+]

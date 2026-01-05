@@ -1,0 +1,420 @@
+{
+  "version": "1.0",
+  "spec_id": "X3-CONSTITUTIONAL-V1",
+  "generated": "2025-01-16",
+  "vectors": [
+    {
+      "id": "V.1.a-pass-monotonic",
+      "section": "V.1.a",
+      "name": "Clock Monotonicity - Normal Progression",
+      "input": {
+        "domain": "EVM",
+        "t1": 100,
+        "clock1": 1000,
+        "t2": 200,
+        "clock2": 2000
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "V.1.a-fail-regression",
+      "section": "V.1.a",
+      "name": "Clock Monotonicity - Regression",
+      "input": {
+        "domain": "EVM",
+        "t1": 100,
+        "clock1": 2000,
+        "t2": 200,
+        "clock2": 1000
+      },
+      "expected": {
+        "result": "Halt",
+        "reason": "ClockRegression"
+      }
+    },
+    {
+      "id": "V.2.a-pass-single-phase",
+      "section": "V.2.a",
+      "name": "Phase Exclusivity - Single Phase",
+      "input": {
+        "phases": ["LOCK"]
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "V.2.a-fail-overlap",
+      "section": "V.2.a",
+      "name": "Phase Exclusivity - Multiple Phases",
+      "input": {
+        "phases": ["LOCK", "PROVE"]
+      },
+      "expected": {
+        "result": "Halt",
+        "reason": "PhaseOverlap"
+      }
+    },
+    {
+      "id": "V.2.b-pass-forward",
+      "section": "V.2.b",
+      "name": "Forward Progress - Valid Transition",
+      "input": {
+        "from_phase": "LOCK",
+        "to_phase": "PROVE",
+        "recovery_mode": false
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "V.2.b-fail-regression",
+      "section": "V.2.b",
+      "name": "Forward Progress - Phase Regression",
+      "input": {
+        "from_phase": "PROVE",
+        "to_phase": "LOCK",
+        "recovery_mode": false
+      },
+      "expected": {
+        "result": "Halt",
+        "reason": "PhaseRegression"
+      }
+    },
+    {
+      "id": "V.2.b-pass-recovery",
+      "section": "V.2.b",
+      "name": "Forward Progress - Recovery Mode Allows Regression",
+      "input": {
+        "from_phase": "PROVE",
+        "to_phase": "LOCK",
+        "recovery_mode": true
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "V.3-quorum-10",
+      "section": "V.3",
+      "name": "Quorum Calculation - 10 Guardians",
+      "input": {
+        "active_guardians": 10
+      },
+      "expected": {
+        "required_quorum": 7
+      }
+    },
+    {
+      "id": "V.3-quorum-5",
+      "section": "V.3",
+      "name": "Quorum Calculation - 5 Guardians",
+      "input": {
+        "active_guardians": 5
+      },
+      "expected": {
+        "required_quorum": 4
+      }
+    },
+    {
+      "id": "V.3.a-pass-quorum",
+      "section": "V.3.a",
+      "name": "Quorum Safety - Met",
+      "input": {
+        "signatures": 7,
+        "active_guardians": 10
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "V.3.a-fail-quorum",
+      "section": "V.3.a",
+      "name": "Quorum Safety - Not Met",
+      "input": {
+        "signatures": 6,
+        "active_guardians": 10
+      },
+      "expected": {
+        "result": "Slash",
+        "percent": 100,
+        "terminal": true,
+        "reason": "QuorumFailure"
+      }
+    },
+    {
+      "id": "VI.1.a-pass-in-window",
+      "section": "VI.1.a",
+      "name": "Bounded HTLC - Within Window",
+      "input": {
+        "now": 1100,
+        "lock_time": 1000,
+        "delta_domain": 200
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "VI.1.a-fail-expired",
+      "section": "VI.1.a",
+      "name": "Bounded HTLC - Expired",
+      "input": {
+        "now": 1300,
+        "lock_time": 1000,
+        "delta_domain": 200
+      },
+      "expected": {
+        "result": "Escalate",
+        "action": "RefundEligible"
+      }
+    },
+    {
+      "id": "VI.2.b-pass-no-timeout",
+      "section": "VI.2.b",
+      "name": "No Silent Timeout - No Timeout",
+      "input": {
+        "timeout_occurred": false,
+        "escalation_emitted": false
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "VI.2.b-pass-with-escalation",
+      "section": "VI.2.b",
+      "name": "No Silent Timeout - With Escalation",
+      "input": {
+        "timeout_occurred": true,
+        "escalation_emitted": true
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "VI.2.b-fail-silent",
+      "section": "VI.2.b",
+      "name": "No Silent Timeout - Silent Failure",
+      "input": {
+        "timeout_occurred": true,
+        "escalation_emitted": false
+      },
+      "expected": {
+        "result": "Slash",
+        "percent": 30,
+        "terminal": false,
+        "reason": "SilentTimeout"
+      }
+    },
+    {
+      "id": "VI.3-pass-first-extension",
+      "section": "VI.3",
+      "name": "Grace Period - First Extension",
+      "input": {
+        "quorum_signed": true,
+        "prior_violations": 0,
+        "extensions_used": 0
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "VI.3-fail-exhausted",
+      "section": "VI.3",
+      "name": "Grace Period - Exhausted",
+      "input": {
+        "quorum_signed": true,
+        "prior_violations": 0,
+        "extensions_used": 1
+      },
+      "expected": {
+        "result": "Deny",
+        "reason": "GracePeriodExhausted"
+      }
+    },
+    {
+      "id": "VI.3-fail-prior-violation",
+      "section": "VI.3",
+      "name": "Grace Period - Prior Violation",
+      "input": {
+        "quorum_signed": true,
+        "prior_violations": 1,
+        "extensions_used": 0
+      },
+      "expected": {
+        "result": "Deny",
+        "reason": "PriorViolation"
+      }
+    },
+    {
+      "id": "VII.1-stake-calculation",
+      "section": "VII.1",
+      "name": "Minimum Stake - Alpha Dominates",
+      "input": {
+        "max_swap_value": 100000000000000000000000,
+        "alpha_bps": 1000,
+        "absolute_floor": 1000000000000000000000
+      },
+      "expected": {
+        "min_stake": 10000000000000000000000,
+        "note": "10% of 100k tokens = 10k tokens > 1k floor"
+      }
+    },
+    {
+      "id": "VII.2-slash-determinism",
+      "section": "VII.2",
+      "name": "Slashing - Determinism Violation",
+      "input": {
+        "violation": "DeterminismViolation"
+      },
+      "expected": {
+        "percent": 100,
+        "terminal": true
+      }
+    },
+    {
+      "id": "VII.2-slash-forgery",
+      "section": "VII.2",
+      "name": "Slashing - Receipt Forgery",
+      "input": {
+        "violation": "ReceiptForgery"
+      },
+      "expected": {
+        "percent": 100,
+        "terminal": true
+      }
+    },
+    {
+      "id": "VII.2-slash-timeout-min",
+      "section": "VII.2",
+      "name": "Slashing - Timeout Negligence (Min)",
+      "input": {
+        "violation": "TimeoutNegligence",
+        "severity": 0
+      },
+      "expected": {
+        "percent": 10,
+        "terminal": false
+      }
+    },
+    {
+      "id": "VII.2-slash-timeout-max",
+      "section": "VII.2",
+      "name": "Slashing - Timeout Negligence (Max)",
+      "input": {
+        "violation": "TimeoutNegligence",
+        "severity": 10
+      },
+      "expected": {
+        "percent": 30,
+        "terminal": false
+      }
+    },
+    {
+      "id": "VII.2-slash-escalation",
+      "section": "VII.2",
+      "name": "Slashing - Invalid Escalation",
+      "input": {
+        "violation": "InvalidEscalation"
+      },
+      "expected": {
+        "percent": 50,
+        "terminal": false
+      }
+    },
+    {
+      "id": "VII.2.a-pass-profitable-defense",
+      "section": "VII.2.a",
+      "name": "Economic Finality - Attack Unprofitable",
+      "input": {
+        "stake": 1000000,
+        "swap_value": 100000,
+        "slash_percent": 100,
+        "detection_probability_bps": 9500
+      },
+      "expected": {
+        "result": "Pass",
+        "note": "expected_loss >> expected_gain"
+      }
+    },
+    {
+      "id": "VII.2.a-fail-unsafe",
+      "section": "VII.2.a",
+      "name": "Economic Finality - Attack Profitable",
+      "input": {
+        "stake": 1000,
+        "swap_value": 100000,
+        "slash_percent": 10,
+        "detection_probability_bps": 1000
+      },
+      "expected": {
+        "result": "Halt",
+        "reason": "UnsafeIncentives"
+      }
+    },
+    {
+      "id": "VIII.1-window-active",
+      "section": "VIII.1",
+      "name": "Challenge Window - Active",
+      "input": {
+        "t0": 1000,
+        "delta_challenge": 500,
+        "now": 1250
+      },
+      "expected": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "VIII.1-window-expired",
+      "section": "VIII.1",
+      "name": "Challenge Window - Expired",
+      "input": {
+        "t0": 1000,
+        "delta_challenge": 500,
+        "now": 1600
+      },
+      "expected": {
+        "is_active": false
+      }
+    },
+    {
+      "id": "VIII.2-evidence-complete",
+      "section": "VIII.2",
+      "name": "Evidence Completeness - All Fields",
+      "input": {
+        "invariant_hash": "0x0101...0101",
+        "receipt_set": ["0x0202...0202"],
+        "evaluation_trace": "0x0303...0303",
+        "domain_context": "0x0404...0404",
+        "guardian_signature": "0x0505...0505"
+      },
+      "expected": {
+        "result": "Pass"
+      }
+    },
+    {
+      "id": "VIII.2-evidence-incomplete",
+      "section": "VIII.2",
+      "name": "Evidence Completeness - Missing Fields",
+      "input": {
+        "invariant_hash": "0x0101...0101",
+        "receipt_set": null,
+        "evaluation_trace": "0x0303...0303",
+        "domain_context": null,
+        "guardian_signature": "0x0505...0505"
+      },
+      "expected": {
+        "result": "Reject",
+        "missing": ["receipt_set", "domain_context"]
+      }
+    }
+  ]
+}

@@ -4,12 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-parity-scale-codec = { version = "3.0", features = ["derive"] }
-scale-info = { version = "2.0", features = ["derive"] }
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 
 [features]
 default = ["std"]
-std = []
+std = [
+	"parity-scale-codec/std",
+	"scale-info/std",
+]
 
 [dev-dependencies]
-hex = "0.4"
+hex = { workspace = true }

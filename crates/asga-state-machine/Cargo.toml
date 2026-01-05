@@ -1,0 +1,24 @@
+[package]
+name = "asga-state-machine"
+version = "0.1.0"
+edition = "2021"
+description = "Formal state machine specification for ASGA (Atomic Swap Guardian Agent) swap lifecycle"
+authors = ["ATLAS Team <dev@atlas.example>"]
+license = "Apache-2.0"
+publish = false
+
+[dependencies]
+parity-scale-codec = { workspace = true, default-features = false, features = ["derive", "max-encoded-len"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+asga-receipts = { path = "../receipts", default-features = false }
+
+[dev-dependencies]
+proptest = { workspace = true }
+
+[features]
+default = ["std"]
+std = [
+    "parity-scale-codec/std",
+    "scale-info/std",
+    "asga-receipts/std",
+]
