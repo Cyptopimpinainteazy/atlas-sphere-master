@@ -215,7 +215,7 @@ pub struct SwapDeadlines {
 }
 
 /// Receipt collection status for a swap.
-#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, Debug, TypeInfo, Default)]
 pub struct ReceiptStatus {
     /// Domains that have submitted lock receipts
     pub lock_receipts: Vec<DomainId>,
@@ -223,16 +223,6 @@ pub struct ReceiptStatus {
     pub exec_receipts: Vec<DomainId>,
     /// Domains that have submitted final receipts
     pub final_receipts: Vec<DomainId>,
-}
-
-impl Default for ReceiptStatus {
-    fn default() -> Self {
-        Self {
-            lock_receipts: Vec::new(),
-            exec_receipts: Vec::new(),
-            final_receipts: Vec::new(),
-        }
-    }
 }
 
 impl ReceiptStatus {
@@ -588,7 +578,6 @@ mod tests {
         assert!(!SwapState::Undefined.is_active());
         assert!(SwapState::Initialized.is_active());
         assert!(SwapState::PhaseLock.is_active());
-        assert!(!SwapState::Completed.is_terminal() == false);
         assert!(SwapState::Completed.is_terminal());
         assert!(SwapState::Reverted.is_terminal());
         assert!(SwapState::Slashed.is_terminal());

@@ -274,13 +274,14 @@ mod rbpf {
     }
 
     /// rBPF-backed executor implementation
+    #[derive(Default)]
     pub struct RbpfSvmExecutor {
         // potential configuration or caches can go here
     }
 
     impl RbpfSvmExecutor {
         pub fn new() -> Self {
-            Self {}
+            Self::default()
         }
 
         /// Minimal helper: attempt to perform rBPF verification using solana_rbpf
@@ -317,7 +318,7 @@ mod rbpf {
             }
 
             // 2. Verify program bytes using rBPF verifier indirectly
-            if let Err(_) = Self::verify_bpf(&p.program) {
+            if Self::verify_bpf(&p.program).is_err() {
                 return Err(super::SvmError::InvalidPayload);
             }
 
@@ -383,7 +384,7 @@ mod rbpf {
                 MemoryMapping::new(regions, executable.get_config(), &sbpf_version)
                     .map_err(|_| super::SvmError::ExecutionFailed)?;
 
-            let mut context = TestContextObject::new(config.compute_unit_limit as u64);
+            let mut context = TestContextObject::new(config.compute_unit_limit);
 
             let mut vm = EbpfVm::new(
                 loader.clone(),
@@ -439,7 +440,7 @@ mod rbpf {
                                 src.copy_from_slice(&src_pub);
                                 let mut dst = [0u8; 32];
                                 dst.copy_from_slice(&dst_pub);
-                                if let (Some(mut src_acc), Some(mut dst_acc)) =
+                                if let (Some(src_acc), Some(mut dst_acc)) =
                                     (backend.load_account(&src), backend.load_account(&dst))
                                 {
                                     // clamp length
@@ -462,10 +463,10 @@ mod rbpf {
             // CPI:<base64_payload> -- nested SCALE-encoded payload
             if p.data.starts_with(b"CPI:") {
                 let b64 = &p.data[4..];
-                if let Ok(bytes) = base64::decode(b64) {
+                if let Ok(bytes) = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b64) {
                     // recursively execute nested payload with reduced compute limit
                     let nested_cfg = super::SvmConfig::new(
-                        (config.compute_unit_limit / 4),
+                        config.compute_unit_limit / 4,
                         config.compute_unit_price,
                         config.block_height,
                         config.block_timestamp,
@@ -600,7 +601,7 @@ mod rbpf {
         #[test]
         fn test_sol_log_syscall_simulation() {
             let prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            let data = [b"LOG:", b"hello world"].concat();
+            let data = [b"LOG:" as &[u8], b"hello world" as &[u8]].concat();
             let payload = SvmPayload {
                 program: prog,
                 accounts: vec![],
@@ -616,7 +617,7 @@ mod rbpf {
         #[test]
         fn test_memcpy_syscall_simulation() {
             // prepare two accounts
-            let mut acc_a = SvmAccountInput {
+            let acc_a = SvmAccountInput {
                 pubkey: [2u8; 32],
                 is_signer: false,
                 is_writable: true,
@@ -625,7 +626,7 @@ mod rbpf {
                 owner: [0u8; 32],
                 executable: false,
             };
-            let mut acc_b = SvmAccountInput {
+            let acc_b = SvmAccountInput {
                 pubkey: [3u8; 32],
                 is_signer: false,
                 is_writable: true,
@@ -663,11 +664,11 @@ mod rbpf {
             let nested_payload = SvmPayload {
                 program: nested_prog,
                 accounts: vec![],
-                data: [b"LOG:", b"nested"].concat(),
+                data: [b"LOG:" as &[u8], b"nested" as &[u8]].concat(),
             };
-            let nested_b64 = base64::encode(&nested_payload.encode());
+            let nested_b64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &nested_payload.encode());
             let top_prog = vec![0x95, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-            let data = [b"CPI:", nested_b64.as_bytes()].concat();
+            let data = [b"CPI:" as &[u8], nested_b64.as_bytes()].concat();
             let payload = SvmPayload {
                 program: top_prog,
                 accounts: vec![],
