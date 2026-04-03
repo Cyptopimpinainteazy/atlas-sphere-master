@@ -66,7 +66,10 @@ pub enum ChronosError {
     Network(String),
 
     #[error("Rate limited by {endpoint} (retry_after_ms={retry_after_ms})")]
-    RateLimited { endpoint: String, retry_after_ms: u64 },
+    RateLimited {
+        endpoint: String,
+        retry_after_ms: u64,
+    },
 
     #[error("Internal error: {0}")]
     Internal(String),

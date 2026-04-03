@@ -1,0 +1,37 @@
+name: Ollama PR Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  run-ollama-generate-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Make test executable
+        run: chmod +x tools/ollama/test_generate_md.sh || true
+
+      - name: Run generate_md integration test
+        run: |
+          mkdir -p test-artifacts
+          ./tools/ollama/test_generate_md.sh 2>&1 | tee test-artifacts/test_generate_md.log
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-test-logs
+          path: test-artifacts

@@ -11,8 +11,11 @@ use crate::intent::SwapIntent;
 use crate::mempool::MempoolScanner;
 use crate::predictor::IntentPredictor;
 use crate::router::QuantumRouter;
-use crate::timewarp::{TimeWarpEngine, Signer};
-use crate::types::{ExecutionResult, MempoolStats, OracleMetrics, PreSignedBundle, TradeRoute};
+use crate::timewarp::{Signer, TimeWarpEngine};
+use crate::types::{
+    ChainId, ChainStatus, ExecutionResult, MempoolStats, OracleMetrics, PreSignedBundle, TradeRoute,
+};
+use std::collections::HashMap;
 
 /// ChronosFlash Oracle - Negative-latency pre-execution system
 ///
@@ -50,6 +53,18 @@ pub struct ChronosOracle {
 }
 
 impl ChronosOracle {
+    pub fn shared_mempool_stats(&self) -> Arc<RwLock<MempoolStats>> {
+        self.mempool.shared_stats_handle()
+    }
+
+    pub fn shared_chain_statuses(&self) -> Arc<RwLock<HashMap<ChainId, ChainStatus>>> {
+        self.mempool.shared_statuses_handle()
+    }
+
+    pub fn shared_oracle_metrics(&self) -> Arc<RwLock<OracleMetrics>> {
+        self.metrics.clone()
+    }
+
     /// Create new ChronosFlash oracle
     pub async fn new(
         config: ChronosConfig,
@@ -154,7 +169,11 @@ impl ChronosOracle {
         }
 
         let best_route = routes.into_iter().next().unwrap();
-        log::debug!("Best route: {} hops, expected output: {}", best_route.hops.len(), best_route.expected_output);
+        log::debug!(
+            "Best route: {} hops, expected output: {}",
+            best_route.hops.len(),
+            best_route.expected_output
+        );
 
         // Step 2: Check if route is profitable
         if !self.is_profitable(&best_route, &intent) {
@@ -163,11 +182,14 @@ impl ChronosOracle {
         }
 
         // Step 3: Pre-sign atomic bundle
-        let bundle = self.timewarp.presign_bundle(best_route, self.signer.as_ref()).await?;
-        
+        let bundle = self
+            .timewarp
+            .presign_bundle(best_route, self.signer.as_ref())
+            .await?;
+
         // Step 4: Execute bundle (TIME-WARP!)
         let result = self.timewarp.execute_bundle(&bundle).await?;
-        
+
         // Update metrics
         self.update_metrics(&result).await;
 
@@ -202,25 +224,29 @@ impl ChronosOracle {
         // Simple check: output > input + estimated gas cost
         let gas_cost_estimate = route.total_gas as u128 * 50_000_000_000u128; // 50 gwei
         let profit = route.expected_output.saturating_sub(intent.amount_in);
-        
+
         profit > gas_cost_estimate
     }
 
     /// Update oracle metrics
     async fn update_metrics(&self, result: &ExecutionResult) {
         let mut metrics = self.metrics.write().await;
-        
+
         if result.success {
             metrics.bundles_executed += 1;
             metrics.total_volume += result.actual_output;
             metrics.total_gas_saved += result.gas_used;
-            
+
             // Update averages
             let n = metrics.bundles_executed as f64;
-            metrics.avg_latency_ms = (metrics.avg_latency_ms * (n - 1.0) + result.latency_ms as f64) / n;
-            metrics.avg_time_advantage_ms = (metrics.avg_time_advantage_ms * (n - 1.0) + result.time_advantage_ms.abs() as f64) / n;
-            
-            metrics.success_rate = metrics.bundles_executed as f64 / (metrics.bundles_executed + 1) as f64;
+            metrics.avg_latency_ms =
+                (metrics.avg_latency_ms * (n - 1.0) + result.latency_ms as f64) / n;
+            metrics.avg_time_advantage_ms = (metrics.avg_time_advantage_ms * (n - 1.0)
+                + result.time_advantage_ms.abs() as f64)
+                / n;
+
+            metrics.success_rate =
+                metrics.bundles_executed as f64 / (metrics.bundles_executed + 1) as f64;
         }
     }
 
@@ -244,7 +270,7 @@ impl ChronosOracle {
         for (chain_id, _) in &self.config.chains {
             // Get predictions for this chain
             let predictions = self.predictor.predict(*chain_id).await?;
-            
+
             for prediction in predictions {
                 if prediction.confidence >= self.config.prediction_threshold {
                     // Convert prediction to synthetic intent
@@ -254,7 +280,9 @@ impl ChronosOracle {
                         sender: prediction.predicted_sender,
                         token_in: prediction.token_in,
                         token_out: prediction.token_out,
-                        amount_in: (prediction.predicted_amount_range.0 + prediction.predicted_amount_range.1) / 2,
+                        amount_in: (prediction.predicted_amount_range.0
+                            + prediction.predicted_amount_range.1)
+                            / 2,
                         min_amount_out: 0,
                         deadline: 0,
                         tx_hash: [0u8; 32],
@@ -270,7 +298,11 @@ impl ChronosOracle {
                     if let Ok(routes) = self.router.compute_routes(&synthetic_intent).await {
                         if let Some(route) = routes.into_iter().next() {
                             // Pre-sign bundle
-                            if let Ok(bundle) = self.timewarp.presign_bundle(route, self.signer.as_ref()).await {
+                            if let Ok(bundle) = self
+                                .timewarp
+                                .presign_bundle(route, self.signer.as_ref())
+                                .await
+                            {
                                 bundles.push(bundle);
                             }
                         }
@@ -309,7 +341,8 @@ impl ChronosOracleBuilder {
     }
 
     pub async fn build(self) -> ChronosResult<ChronosOracle> {
-        let signer = self.signer
+        let signer = self
+            .signer
             .ok_or_else(|| ChronosError::InvalidConfig("Signer required".to_string()))?;
 
         ChronosOracle::new(self.config, signer).await
@@ -330,7 +363,11 @@ mod tests {
 
     #[async_trait::async_trait]
     impl Signer for MockSigner {
-        async fn sign(&self, _chain_id: crate::types::ChainId, _data: &[u8]) -> ChronosResult<crate::types::Signature> {
+        async fn sign(
+            &self,
+            _chain_id: crate::types::ChainId,
+            _data: &[u8],
+        ) -> ChronosResult<crate::types::Signature> {
             Ok(crate::types::Signature {
                 chain_id: 1,
                 signer: [0u8; 32],
@@ -348,7 +385,7 @@ mod tests {
     async fn test_oracle_creation() {
         let config = ChronosConfig::default();
         let signer = Arc::new(MockSigner);
-        
+
         let oracle = ChronosOracle::new(config, signer).await;
         assert!(oracle.is_ok());
     }

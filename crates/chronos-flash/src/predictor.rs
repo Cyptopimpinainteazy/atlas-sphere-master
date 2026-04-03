@@ -7,9 +7,9 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::config::PredictorConfig;
-use crate::error::{ChronosError, ChronosResult};
-use crate::intent::{IntentType, PredictedIntent, PredictionBasis, PredictionType, SwapIntent};
-use crate::types::{Address, Balance, ChainId, Price, Timestamp, Token};
+use crate::error::ChronosResult;
+use crate::intent::{PredictedIntent, PredictionBasis, PredictionType, SwapIntent};
+use crate::types::{Address, Balance, ChainId, Timestamp, Token};
 
 /// AI-powered intent predictor
 pub struct IntentPredictor {
@@ -17,6 +17,7 @@ pub struct IntentPredictor {
     /// Historical patterns per address
     address_patterns: Arc<RwLock<HashMap<Address, AddressPattern>>>,
     /// Token pair statistics
+    #[allow(dead_code)]
     pair_stats: Arc<RwLock<HashMap<(ChainId, Address, Address), PairStats>>>,
     /// Price movement correlations
     price_correlations: Arc<RwLock<HashMap<Address, PriceCorrelation>>>,
@@ -41,9 +42,12 @@ impl IntentPredictor {
 
         // Get all known addresses for this chain
         let patterns = self.address_patterns.read().await;
-        
+
         for (address, pattern) in patterns.iter() {
-            if let Some(prediction) = self.predict_for_address(chain_id, *address, pattern).await? {
+            if let Some(prediction) = self
+                .predict_for_address(chain_id, *address, pattern)
+                .await?
+            {
                 if prediction.confidence >= self.config.confidence_threshold {
                     predictions.push(prediction);
                 }
@@ -72,14 +76,14 @@ impl IntentPredictor {
 
         // Predict if within expected interval
         let interval_ratio = time_since_last as f64 / avg_interval as f64;
-        
+
         if interval_ratio < 0.8 {
             return Ok(None); // Too early
         }
 
         // Calculate confidence based on pattern consistency
         let confidence = self.calculate_pattern_confidence(pattern);
-        
+
         if confidence < self.config.confidence_threshold {
             return Ok(None);
         }
@@ -87,8 +91,18 @@ impl IntentPredictor {
         // Get most likely token pair
         let (token_in, token_out) = pattern.most_common_pair.clone().unwrap_or_else(|| {
             (
-                Token { chain_id, address: [0u8; 32], symbol: "UNKNOWN".to_string(), decimals: 18 },
-                Token { chain_id, address: [0u8; 32], symbol: "UNKNOWN".to_string(), decimals: 18 },
+                Token {
+                    chain_id,
+                    address: [0u8; 32],
+                    symbol: "UNKNOWN".to_string(),
+                    decimals: 18,
+                },
+                Token {
+                    chain_id,
+                    address: [0u8; 32],
+                    symbol: "UNKNOWN".to_string(),
+                    decimals: 18,
+                },
             )
         });
 
@@ -129,7 +143,9 @@ impl IntentPredictor {
         confidence += trade_factor;
 
         // Consistent timing = higher confidence
-        let consistency_factor = (1.0 - pattern.interval_variance.sqrt() / pattern.avg_trade_interval as f64).max(0.0) * 0.3;
+        let consistency_factor =
+            (1.0 - pattern.interval_variance.sqrt() / pattern.avg_trade_interval as f64).max(0.0)
+                * 0.3;
         confidence += consistency_factor;
 
         // Price correlation = higher confidence
@@ -138,7 +154,8 @@ impl IntentPredictor {
 
         // Recent activity = higher confidence
         let now = chrono::Utc::now().timestamp_millis() as u64;
-        let recency = 1.0 - ((now - pattern.last_trade_time) as f64 / (7 * 24 * 3600 * 1000) as f64).min(1.0);
+        let recency =
+            1.0 - ((now - pattern.last_trade_time) as f64 / (7 * 24 * 3600 * 1000) as f64).min(1.0);
         confidence += recency * 0.2;
 
         confidence.min(1.0)
@@ -147,10 +164,10 @@ impl IntentPredictor {
     /// Update patterns with new observed intent
     pub async fn observe(&self, intent: &SwapIntent) {
         let mut patterns = self.address_patterns.write().await;
-        
-        let pattern = patterns.entry(intent.sender).or_insert_with(|| {
-            AddressPattern::new(intent.sender)
-        });
+
+        let pattern = patterns
+            .entry(intent.sender)
+            .or_insert_with(|| AddressPattern::new(intent.sender));
 
         pattern.update(intent);
     }
@@ -173,8 +190,18 @@ impl IntentPredictor {
                         id: uuid::Uuid::new_v4(),
                         chain_id,
                         predicted_sender: *address,
-                        token_in: Token { chain_id, address: token, symbol: "".to_string(), decimals: 18 },
-                        token_out: Token { chain_id, address: [0u8; 32], symbol: "".to_string(), decimals: 18 },
+                        token_in: Token {
+                            chain_id,
+                            address: token,
+                            symbol: "".to_string(),
+                            decimals: 18,
+                        },
+                        token_out: Token {
+                            chain_id,
+                            address: [0u8; 32],
+                            symbol: "".to_string(),
+                            decimals: 18,
+                        },
                         predicted_amount_range: (0, 0),
                         confidence: reaction.abs(),
                         prediction_type: PredictionType::PriceReactive,
@@ -196,19 +223,22 @@ impl IntentPredictor {
     }
 
     /// Run quantum-enhanced prediction using evolution core
-    pub async fn quantum_predict(&self, inputs: Vec<PredictionInput>) -> ChronosResult<Vec<PredictedIntent>> {
+    pub async fn quantum_predict(
+        &self,
+        inputs: Vec<PredictionInput>,
+    ) -> ChronosResult<Vec<PredictedIntent>> {
         // This would integrate with quantum-swarm for advanced prediction
         // Uses quantum superposition to evaluate multiple prediction paths simultaneously
-        
+
         let mut predictions = vec![];
-        
+
         for input in inputs {
             // Quantum feature extraction
             let features = self.extract_quantum_features(&input);
-            
+
             // Run through hybrid quantum-classical model
             let (confidence, prediction_type) = self.model_state.predict(&features);
-            
+
             if confidence >= self.config.confidence_threshold {
                 let prediction = PredictedIntent {
                     id: uuid::Uuid::new_v4(),
@@ -279,13 +309,14 @@ impl AddressPattern {
 
     pub fn update(&mut self, intent: &SwapIntent) {
         let now = intent.detected_at;
-        
+
         // Update interval statistics
         if self.trade_count > 0 {
             let interval = now - self.last_trade_time;
             let old_avg = self.avg_trade_interval;
-            self.avg_trade_interval = (old_avg * self.trade_count as u64 + interval) / (self.trade_count as u64 + 1);
-            
+            self.avg_trade_interval =
+                (old_avg * self.trade_count as u64 + interval) / (self.trade_count as u64 + 1);
+
             // Update variance (running)
             let diff = interval as f64 - old_avg as f64;
             self.interval_variance += diff * (interval as f64 - self.avg_trade_interval as f64);
@@ -293,7 +324,8 @@ impl AddressPattern {
 
         // Update amount statistics
         let old_avg = self.avg_amount;
-        self.avg_amount = (old_avg as u128 * self.trade_count as u128 + intent.amount_in) / (self.trade_count as u128 + 1);
+        self.avg_amount = (old_avg as u128 * self.trade_count as u128 + intent.amount_in)
+            / (self.trade_count as u128 + 1);
 
         // Update pair tracking
         self.most_common_pair = Some((intent.token_in.clone(), intent.token_out.clone()));
@@ -371,19 +403,21 @@ impl PredictorModelState {
 
     fn predict(&self, features: &[f64]) -> (f64, PredictionType) {
         // Simple dot product prediction (real implementation would use neural network)
-        let score: f64 = features.iter()
+        let score: f64 = features
+            .iter()
             .zip(self.weights.iter())
             .map(|(f, w)| f * w)
             .sum();
 
         let confidence = (1.0 / (1.0 + (-score).exp())).min(0.99); // Sigmoid activation
-        
+
         (confidence, PredictionType::ModelPrediction)
     }
 }
 
 /// Swarm predictor using distributed GPU inference
 pub struct SwarmPredictor {
+    #[allow(dead_code)]
     config: PredictorConfig,
     // Would integrate with gpu-swarm for distributed inference
 }
@@ -394,12 +428,15 @@ impl SwarmPredictor {
     }
 
     /// Run distributed prediction across GPU swarm
-    pub async fn predict_distributed(&self, inputs: Vec<PredictionInput>) -> ChronosResult<Vec<(PredictionInput, f64)>> {
+    pub async fn predict_distributed(
+        &self,
+        inputs: Vec<PredictionInput>,
+    ) -> ChronosResult<Vec<(PredictionInput, f64)>> {
         // In production, this would:
         // 1. Partition inputs across available GPUs
         // 2. Run inference in parallel
         // 3. Aggregate results
-        
+
         let results: Vec<(PredictionInput, f64)> = inputs
             .into_iter()
             .map(|input| {

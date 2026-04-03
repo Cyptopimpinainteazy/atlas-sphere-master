@@ -2,13 +2,13 @@
 //!
 //! Uses Evolution Core for genetic algorithm-based route optimization
 
-use std::collections::{BinaryHeap, HashMap};
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 use crate::config::RouterConfig;
 use crate::error::{ChronosError, ChronosResult};
 use crate::intent::SwapIntent;
-use crate::types::{Address, Balance, ChainId, Gas, RouteHop, RouteId, Token, TradeRoute};
+use crate::types::{Address, Balance, ChainId, Gas, RouteHop, Token, TradeRoute};
 
 /// Quantum-enhanced route optimizer
 pub struct QuantumRouter {
@@ -34,16 +34,18 @@ impl QuantumRouter {
     /// Compute optimal routes for a swap intent
     pub async fn compute_routes(&self, intent: &SwapIntent) -> ChronosResult<Vec<TradeRoute>> {
         let start_time = std::time::Instant::now();
-        
+
         // Check if cross-chain is needed
         let same_chain = intent.token_in.chain_id == intent.token_out.chain_id;
-        
+
         let routes = if same_chain {
             self.compute_single_chain_routes(intent).await?
         } else if self.config.cross_chain_enabled {
             self.compute_cross_chain_routes(intent).await?
         } else {
-            return Err(ChronosError::RouteFailed("Cross-chain routing disabled".to_string()));
+            return Err(ChronosError::RouteFailed(
+                "Cross-chain routing disabled".to_string(),
+            ));
         };
 
         // Check timeout
@@ -62,7 +64,10 @@ impl QuantumRouter {
     }
 
     /// Compute routes on single chain using Dijkstra + genetic optimization
-    async fn compute_single_chain_routes(&self, intent: &SwapIntent) -> ChronosResult<Vec<TradeRoute>> {
+    async fn compute_single_chain_routes(
+        &self,
+        intent: &SwapIntent,
+    ) -> ChronosResult<Vec<TradeRoute>> {
         let chain_id = intent.token_in.chain_id;
         let token_in = intent.token_in.address;
         let token_out = intent.token_out.address;
@@ -89,12 +94,17 @@ impl QuantumRouter {
     }
 
     /// Compute cross-chain routes
-    async fn compute_cross_chain_routes(&self, intent: &SwapIntent) -> ChronosResult<Vec<TradeRoute>> {
+    async fn compute_cross_chain_routes(
+        &self,
+        intent: &SwapIntent,
+    ) -> ChronosResult<Vec<TradeRoute>> {
         let src_chain = intent.token_in.chain_id;
         let dst_chain = intent.token_out.chain_id;
-        
+
         // Find bridges between chains
-        let bridges: Vec<_> = self.bridges.iter()
+        let bridges: Vec<_> = self
+            .bridges
+            .iter()
             .filter(|b| b.src_chain == src_chain && b.dst_chain == dst_chain)
             .collect();
 
@@ -106,7 +116,7 @@ impl QuantumRouter {
 
         for bridge in bridges {
             // Route: TokenIn -> BridgeToken -> Bridge -> BridgeToken -> TokenOut
-            
+
             // 1. Get route from token_in to bridge token on source chain
             let src_intent = SwapIntent {
                 token_out: Token {
@@ -122,7 +132,7 @@ impl QuantumRouter {
             // 2. Get route from bridge token to token_out on destination chain
             if let Some(src_route) = src_routes.first() {
                 let bridged_amount = self.estimate_bridge_output(bridge, src_route.expected_output);
-                
+
                 let dst_intent = SwapIntent {
                     chain_id: dst_chain,
                     token_in: Token {
@@ -176,7 +186,14 @@ impl QuantumRouter {
         let mut visited = std::collections::HashSet::new();
         visited.insert(start);
 
-        self.dfs_paths(graph, end, &mut current_path, &mut visited, &mut paths, max_hops);
+        self.dfs_paths(
+            graph,
+            end,
+            &mut current_path,
+            &mut visited,
+            &mut paths,
+            max_hops,
+        );
 
         paths
     }
@@ -238,7 +255,7 @@ impl QuantumRouter {
             if let Some(pools) = self.pools.get(&(chain_id, token_in_addr, token_out_addr)) {
                 if let Some(pool) = pools.first() {
                     let output = self.quote_swap(pool, current_amount);
-                    
+
                     let hop = RouteHop {
                         chain_id,
                         protocol: pool.protocol.clone(),
@@ -290,10 +307,10 @@ impl QuantumRouter {
     fn quote_swap(&self, pool: &LiquidityPool, amount_in: Balance) -> Balance {
         // Constant product AMM: x * y = k
         // output = reserve_out * amount_in / (reserve_in + amount_in)
-        
+
         let reserve_in = pool.reserve_a;
         let reserve_out = pool.reserve_b;
-        
+
         if reserve_in == 0 {
             return 0;
         }
@@ -320,7 +337,7 @@ impl QuantumRouter {
         intent: &SwapIntent,
     ) -> ChronosResult<TradeRoute> {
         let mut hops = src.hops.clone();
-        
+
         // Add bridge hop
         hops.push(RouteHop {
             chain_id: bridge.src_chain,
@@ -364,7 +381,7 @@ impl QuantumRouter {
     async fn quantum_optimize(&self, routes: Vec<TradeRoute>) -> ChronosResult<Vec<TradeRoute>> {
         // Uses Evolution Core for genetic algorithm optimization
         // Explores route permutations and hop reordering
-        
+
         let mut population: Vec<RouteIndividual> = routes
             .into_iter()
             .map(|r| RouteIndividual::new(r))
@@ -500,6 +517,9 @@ struct RouteIndividual {
 
 impl RouteIndividual {
     fn new(route: TradeRoute) -> Self {
-        Self { route, fitness: 0.0 }
+        Self {
+            route,
+            fitness: 0.0,
+        }
     }
 }

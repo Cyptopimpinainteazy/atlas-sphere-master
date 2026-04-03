@@ -134,7 +134,9 @@ impl HttpRpcClient {
         let endpoint = std::env::var(endpoint_env).ok()?;
 
         match api_key_env.and_then(|k| std::env::var(k).ok()) {
-            Some(api_key) if !api_key.is_empty() => Some(Self::with_tatum_api_key(endpoint, &api_key)),
+            Some(api_key) if !api_key.is_empty() => {
+                Some(Self::with_tatum_api_key(endpoint, &api_key))
+            }
             _ => Some(Self::new(endpoint)),
         }
     }
@@ -159,9 +161,11 @@ impl HttpRpcClient {
             .unwrap_or_else(|| "x-api-key".to_string());
 
         match api_key {
-            Some(api_key) if !api_key.is_empty() => {
-                Some(Self::with_api_key_header(endpoint, header_name.trim(), &api_key))
-            }
+            Some(api_key) if !api_key.is_empty() => Some(Self::with_api_key_header(
+                endpoint,
+                header_name.trim(),
+                &api_key,
+            )),
             _ => Some(Self::new(endpoint)),
         }
     }
@@ -190,7 +194,9 @@ impl HttpRpcClient {
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .map(|endpoint| match api_key.as_deref() {
-                Some(key) if !key.is_empty() => Self::with_api_key_header(endpoint.to_string(), header_name.trim(), key),
+                Some(key) if !key.is_empty() => {
+                    Self::with_api_key_header(endpoint.to_string(), header_name.trim(), key)
+                }
                 _ => Self::new(endpoint.to_string()),
             })
             .collect()

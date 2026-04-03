@@ -1,0 +1,20 @@
+[package]
+name = "pallet-atomic-guardian"
+version = "0.1.0"
+authors = ["ATLAS Team <dev@atlas.example>"]
+edition = "2021"
+
+[lib]
+name = "pallet_atomic_guardian"
+path = "src/lib.rs"
+
+[dependencies]
+frame-support = { version = "4.0.0", default-features = false }
+frame-system = { version = "4.0.0", default-features = false }
+sp-runtime = { version = "4.0.0", default-features = false }
+codec = { version = "0.3", default-features = false }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+asga-receipts = { path = "../../crates/receipts" }
+
+[dev-dependencies]
+serde = { version = "1.0", features = ["derive"] }

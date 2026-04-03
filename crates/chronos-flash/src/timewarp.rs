@@ -8,8 +8,8 @@ use tokio::sync::RwLock;
 
 use crate::error::{ChronosError, ChronosResult};
 use crate::types::{
-    Address, Balance, Checkpoint, CheckpointId, ChainId, ExecutionResult,
-    Gas, Hash, PreSignedBundle, RouteId, Signature, Timestamp, TradeRoute, TxHash,
+    Address, Balance, ChainId, Checkpoint, CheckpointId, ExecutionResult, Gas, Hash,
+    PreSignedBundle, RouteId, Signature, TradeRoute, TxHash,
 };
 
 /// Time-warp pre-execution engine
@@ -70,7 +70,7 @@ impl TimeWarpEngine {
         signer: &dyn Signer,
     ) -> ChronosResult<PreSignedBundle> {
         let now = chrono::Utc::now().timestamp_millis() as u64;
-        
+
         // Create checkpoints for each chain involved
         let mut checkpoints = vec![];
         let mut chain_ids: Vec<ChainId> = route.hops.iter().map(|h| h.chain_id).collect();
@@ -121,12 +121,14 @@ impl TimeWarpEngine {
         let mut actual_output = 0u128;
 
         for (i, hop) in bundle.route.hops.iter().enumerate() {
-            let signature = bundle.signatures.get(i)
+            let signature = bundle
+                .signatures
+                .get(i)
                 .ok_or_else(|| ChronosError::PreExecutionFailed("Missing signature".to_string()))?;
 
             // Execute on chain
             let result = self.execute_hop(hop, signature).await?;
-            
+
             tx_hashes.push(result.tx_hash);
             total_gas_used += result.gas_used;
             actual_output = result.output;
@@ -161,12 +163,13 @@ impl TimeWarpEngine {
     /// Rollback to checkpoint (if execution fails)
     pub async fn rollback(&self, checkpoint_id: CheckpointId) -> ChronosResult<()> {
         let checkpoints = self.checkpoints.read().await;
-        let checkpoint = checkpoints.get(&checkpoint_id)
+        let _checkpoint = checkpoints
+            .get(&checkpoint_id)
             .ok_or_else(|| ChronosError::RollbackFailed("Checkpoint not found".to_string()))?;
 
         // On EVM chains, we can't actually rollback state
         // Instead, we submit compensating transactions
-        
+
         // In practice, this means:
         // 1. For failed swaps: tokens are returned automatically
         // 2. For partial executions: submit reverse swap
@@ -176,14 +179,20 @@ impl TimeWarpEngine {
     }
 
     /// Execute a single hop
-    async fn execute_hop(&self, hop: &crate::types::RouteHop, signature: &Signature) -> ChronosResult<HopResult> {
+    async fn execute_hop(
+        &self,
+        hop: &crate::types::RouteHop,
+        signature: &Signature,
+    ) -> ChronosResult<HopResult> {
         // Get executor for chain
-        let executor = self.executors.get(&hop.chain_id)
+        let executor = self
+            .executors
+            .get(&hop.chain_id)
             .ok_or_else(|| ChronosError::PreExecutionFailed("No executor for chain".to_string()))?;
 
         // Build transaction
         let tx = self.build_transaction(hop, signature)?;
-        
+
         // Submit to chain
         let result = executor.submit_transaction(tx).await?;
 
@@ -195,12 +204,12 @@ impl TimeWarpEngine {
         // Encode based on protocol type
         // For UniswapV3: encode exactInputSingle params
         // For UniswapV2: encode swapExactTokensForTokens params
-        
+
         let mut data = vec![];
-        
+
         // Function selector (4 bytes)
         data.extend_from_slice(&[0xc0, 0x4b, 0x8d, 0x59]); // exactInputSingle
-        
+
         // Encode parameters (simplified)
         // tokenIn (32 bytes)
         data.extend_from_slice(&hop.token_in.address);
@@ -209,9 +218,9 @@ impl TimeWarpEngine {
         // fee (32 bytes, padded)
         data.extend_from_slice(&[0u8; 29]);
         data.extend_from_slice(&[0x0b, 0xb8, 0x00]); // 3000 = 0.3%
-        // recipient (32 bytes)
+                                                     // recipient (32 bytes)
         data.extend_from_slice(&[0u8; 32]); // Will be replaced with actual recipient
-        // deadline (32 bytes)
+                                            // deadline (32 bytes)
         let deadline = chrono::Utc::now().timestamp() as u64 + 300;
         data.extend_from_slice(&deadline.to_be_bytes());
         data.extend_from_slice(&[0u8; 24]);
@@ -229,9 +238,13 @@ impl TimeWarpEngine {
     }
 
     /// Build transaction from hop and signature
-    fn build_transaction(&self, hop: &crate::types::RouteHop, signature: &Signature) -> ChronosResult<Transaction> {
+    fn build_transaction(
+        &self,
+        hop: &crate::types::RouteHop,
+        signature: &Signature,
+    ) -> ChronosResult<Transaction> {
         let data = self.encode_swap_transaction(hop)?;
-        
+
         Ok(Transaction {
             chain_id: hop.chain_id,
             to: hop.pool_address,
@@ -243,22 +256,22 @@ impl TimeWarpEngine {
     }
 
     /// Get current state root
-    async fn get_state_root(&self, chain_id: ChainId) -> ChronosResult<Hash> {
+    async fn get_state_root(&self, _chain_id: ChainId) -> ChronosResult<Hash> {
         // Would call eth_getBlockByNumber("latest") and extract stateRoot
         Ok([0u8; 32])
     }
 
     /// Get current block number
-    async fn get_block_number(&self, chain_id: ChainId) -> ChronosResult<u64> {
+    async fn get_block_number(&self, _chain_id: ChainId) -> ChronosResult<u64> {
         // Would call eth_blockNumber
         Ok(0)
     }
 
     /// Calculate time advantage over user's original submission
-    async fn calculate_time_advantage(&self, bundle: &PreSignedBundle) -> i64 {
+    async fn calculate_time_advantage(&self, _bundle: &PreSignedBundle) -> i64 {
         // Compare our execution time vs when user's tx would have been mined
         // Negative value = we executed BEFORE user submitted
-        
+
         // In production:
         // 1. Track when intent was detected in mempool
         // 2. Track when our bundle was executed
@@ -277,7 +290,11 @@ impl TimeWarpEngine {
     }
 
     /// Add chain executor
-    pub fn add_executor(&mut self, chain_id: ChainId, executor: Box<dyn ChainExecutor + Send + Sync>) {
+    pub fn add_executor(
+        &mut self,
+        chain_id: ChainId,
+        executor: Box<dyn ChainExecutor + Send + Sync>,
+    ) {
         self.executors.insert(chain_id, executor);
     }
 }
@@ -326,28 +343,33 @@ pub trait ChainExecutor {
 
 /// Flashbots bundle submitter for MEV protection
 pub struct FlashbotsSubmitter {
+    /// TODO: Use for actual Flashbots relay communication
     relay_url: String,
+    /// TODO: Use for signing bundles
     signing_key: Vec<u8>,
 }
 
 impl FlashbotsSubmitter {
     pub fn new(relay_url: String, signing_key: Vec<u8>) -> Self {
-        Self { relay_url, signing_key }
+        Self {
+            relay_url,
+            signing_key,
+        }
     }
 
     /// Submit bundle to Flashbots relay
-    pub async fn submit_bundle(&self, bundle: &PreSignedBundle) -> ChronosResult<Hash> {
+    pub async fn submit_bundle(&self, _bundle: &PreSignedBundle) -> ChronosResult<Hash> {
         // In production:
         // 1. Encode bundle as JSON-RPC request
         // 2. Sign with searcher key
         // 3. Submit to Flashbots relay
         // 4. Wait for inclusion or retry
-        
+
         Ok([0u8; 32])
     }
 
     /// Get bundle status
-    pub async fn get_bundle_status(&self, bundle_hash: Hash) -> ChronosResult<BundleStatus> {
+    pub async fn get_bundle_status(&self, _bundle_hash: Hash) -> ChronosResult<BundleStatus> {
         Ok(BundleStatus::Pending)
     }
 }
@@ -363,6 +385,7 @@ pub enum BundleStatus {
 
 /// MEV-Share submitter for order flow auctions
 pub struct MEVShareSubmitter {
+    /// TODO: Use for actual MEV-Share relay communication
     relay_url: String,
 }
 
@@ -372,10 +395,14 @@ impl MEVShareSubmitter {
     }
 
     /// Submit hint to MEV-Share
-    pub async fn submit_hint(&self, bundle: &PreSignedBundle, hint_level: HintLevel) -> ChronosResult<Hash> {
+    pub async fn submit_hint(
+        &self,
+        _bundle: &PreSignedBundle,
+        _hint_level: HintLevel,
+    ) -> ChronosResult<Hash> {
         // MEV-Share allows partial revelation of transaction data
         // to builders who then compete to include it
-        
+
         Ok([0u8; 32])
     }
 }
@@ -395,6 +422,7 @@ pub enum HintLevel {
 
 /// Jito bundle submitter for Solana MEV
 pub struct JitoSubmitter {
+    /// TODO: Use for actual tip payment to Jito
     tip_account: Address,
 }
 
@@ -404,12 +432,16 @@ impl JitoSubmitter {
     }
 
     /// Submit bundle to Jito block engine
-    pub async fn submit_bundle(&self, transactions: Vec<Vec<u8>>, tip_lamports: u64) -> ChronosResult<Hash> {
+    pub async fn submit_bundle(
+        &self,
+        _transactions: Vec<Vec<u8>>,
+        _tip_lamports: u64,
+    ) -> ChronosResult<Hash> {
         // Jito provides:
         // - Priority transaction inclusion on Solana
         // - Bundle execution guarantees
         // - Tip distribution to validators
-        
+
         Ok([0u8; 32])
     }
 }
