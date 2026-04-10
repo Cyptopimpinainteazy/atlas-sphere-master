@@ -58,11 +58,9 @@ sp-weights = { git = "https://github.com/paritytech/polkadot-sdk", branch = "sta
 
 # WASM-friendly dependency overrides for polkadot-sdk branch
 [patch."https://github.com/paritytech/polkadot-sdk"]
-environmental = { path = "patches/environmental" }
 
 [patch.crates-io]
 # WASM-friendly overrides for registry crates
-environmental = { path = "patches/environmental" }
 errno = { path = "patches/errno" }
 getrandom = { path = "patches/getrandom03" }
 
