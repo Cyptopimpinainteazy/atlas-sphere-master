@@ -376,106 +376,49 @@ where
 
     // Submit a governance proposal
     module.register_method("governance_submitProposal", |params, _client, _| {
-        let (title, _description, _action): (String, String, String) = params.parse()?;
-
-        // In production: call submit_proposal extrinsic
-        log::debug!("governance_submitProposal: title={}", title);
-
-        Ok::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(serde_json::json!({
-            "proposal_id": 42,
-            "proposer": "0x1234567890123456789012345678901234567890",
-            "title": title,
-            "status": "Pending",
-            "voting_period": 14,
-            "created_block": 100
-        }))
+        let _: (String, String, String) = params.parse()?;
+        Err::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(not_implemented(
+            "governance_submitProposal",
+        ))
     })?;
 
     // Vote on a proposal
     module.register_method("governance_vote", |params, _client, _| {
-        let (proposal_id, vote): (u64, String) = params.parse()?;
-
-        // In production: call vote extrinsic
-        log::debug!(
-            "governance_vote: proposal_id={}, vote={}",
-            proposal_id,
-            vote
-        );
-
-        Ok::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(serde_json::json!({
-            "proposal_id": proposal_id,
-            "voter": "0x1234567890123456789012345678901234567890",
-            "vote": vote,
-            "vote_weight": 1,
-            "total_votes_for": 45,
-            "total_votes_against": 5
-        }))
+        let _: (u64, String) = params.parse()?;
+        Err::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(not_implemented(
+            "governance_vote",
+        ))
     })?;
 
     // Execute a proposal
     module.register_method("governance_executeProposal", |params, _client, _| {
-        let proposal_id: u64 = params.one()?;
-
-        // In production: call execute_proposal extrinsic
-        log::debug!("governance_executeProposal: proposal_id={}", proposal_id);
-
-        Ok::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(serde_json::json!({
-            "proposal_id": proposal_id,
-            "executed": true,
-            "status": "Executed",
-            "block_height": 200,
-            "transaction_hash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-        }))
+        let _: u64 = params.one()?;
+        Err::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(not_implemented(
+            "governance_executeProposal",
+        ))
     })?;
 
     // Get proposal details
     module.register_method("governance_getProposal", |params, _client, _| {
-        let proposal_id: u64 = params.one()?;
-
-        // In production: query Proposals storage
-        log::debug!("governance_getProposal: proposal_id={}", proposal_id);
-
-        Ok::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(serde_json::json!({
-            "id": proposal_id,
-            "title": "Reduce Flash Loan Fee",
-            "status": "Approved",
-            "votes_for": 45,
-            "votes_against": 5,
-            "voting_period": 14,
-            "created_block": 100,
-            "end_block": 114,
-            "threshold_bps": 6600
-        }))
+        let _: u64 = params.one()?;
+        Err::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(not_implemented(
+            "governance_getProposal",
+        ))
     })?;
 
     // Get governance statistics
     module.register_method("governance_getStats", |_params, _client, _| {
-        // In production: query governance aggregates
-        log::debug!("governance_getStats");
-
-        Ok::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(serde_json::json!({
-            "total_proposals": 25,
-            "approved_proposals": 18,
-            "rejected_proposals": 5,
-            "executed_proposals": 15,
-            "protocol_paused": false,
-            "average_voting_participation": 75
-        }))
+        Err::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(not_implemented(
+            "governance_getStats",
+        ))
     })?;
 
     // Get governance parameter value
     module.register_method("governance_getParameter", |params, _client, _| {
-        let param_name: String = params.one()?;
-
-        // In production: query GovernanceParameters storage
-        log::debug!("governance_getParameter: {}", param_name);
-
-        Ok::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(serde_json::json!({
-            "parameter": param_name,
-            "value": "50",
-            "last_updated_block": 190,
-            "updated_by_proposal": 42
-        }))
+        let _: String = params.one()?;
+        Err::<serde_json::Value, jsonrpsee::types::ErrorObjectOwned>(not_implemented(
+            "governance_getParameter",
+        ))
     })?;
 
     Ok(module)
