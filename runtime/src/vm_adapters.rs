@@ -224,7 +224,7 @@ pub struct RealX3Adapter;
 #[cfg(all(feature = "std", feature = "real-x3"))]
 impl X3ExecutorAdapter for RealX3Adapter {
     fn execute(payload: &[u8]) -> Result<ExecutionReceipt, DispatchError> {
-        use x3_vm::{VM, Verifier, VerifyOptions, VMConfig};
+        use x3_vm::{Value, VM, VMConfig, Verifier, VerifyOptions};
         
         if payload.is_empty() {
             return Err(DispatchError::Other("Empty X3 payload"));
@@ -232,26 +232,34 @@ impl X3ExecutorAdapter for RealX3Adapter {
         
         // Verify bytecode first
         let verify_opts = VerifyOptions::on_chain();
-        if Verifier::verify_module_bytes(payload, verify_opts).is_err() {
-            return Err(DispatchError::Other("X3 bytecode verification failed"));
-        }
+        let module = Verifier::verify_module_bytes(payload, &verify_opts)
+            .map_err(|_| DispatchError::Other("X3 bytecode verification failed"))?;
         
         // Create VM and execute
         let config = VMConfig::default();
-        let mut vm = match VM::new_from_bytes(payload, config) {
-            Ok(vm) => vm,
-            Err(_) => return Err(DispatchError::Other("Failed to initialize X3 VM")),
-        };
+        let mut vm = VM::with_config(module, config);
         
         // Execute entrypoint function (index 0)
         match vm.call_function(0, &[]) {
-            Ok(result) => Ok(ExecutionReceipt {
-                success: true,
-                gas_used: result.gas_used,
-                return_data: BoundedVec::try_from(result.output).unwrap_or_default(),
-                logs: BoundedVec::default(),
-                state_changes: BoundedVec::default(),
-            }),
+            Ok(result) => {
+                let return_data = match result.value {
+                    Some(Value::I64(value)) => value.to_le_bytes().to_vec(),
+                    Some(Value::F64(value)) => value.to_bits().to_le_bytes().to_vec(),
+                    Some(Value::Bool(value)) => vec![value as u8],
+                    Some(Value::String(value)) => value.into_bytes(),
+                    Some(Value::Bytes(value)) => value,
+                    Some(Value::Addr(value)) => value.to_le_bytes().to_vec(),
+                    Some(Value::Unit) | None => Vec::new(),
+                };
+
+                Ok(ExecutionReceipt {
+                    success: true,
+                    gas_used: result.gas_used,
+                    return_data: BoundedVec::try_from(return_data).unwrap_or_default(),
+                    logs: BoundedVec::default(),
+                    state_changes: BoundedVec::default(),
+                })
+            }
             Err(_) => Err(DispatchError::Other("X3 VM execution failed")),
         }
     }
@@ -264,7 +272,8 @@ impl X3ExecutorAdapter for RealX3Adapter {
         }
         
         let verify_opts = VerifyOptions::on_chain();
-        Verifier::verify_module_bytes(payload, verify_opts)
+        Verifier::verify_module_bytes(payload, &verify_opts)
+            .map(|_| ())
             .map_err(|_| DispatchError::Other("X3 bytecode verification failed"))
     }
 }
